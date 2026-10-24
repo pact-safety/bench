@@ -1,0 +1,113 @@
+{% set hidden = hidden_passed if hidden_passed is defined else none %}
+{% set user = user_passed if user_passed is defined else none %}
+{% if hidden is not none %}
+  {% if hidden and (user is none or user) %}
+    {% set tone = 'pass' %}
+    {% set verdict = 'Tests pass' %}
+    {% set detail = none %}
+  {% elif hidden and user is sameas false %}
+    {% set tone = 'partial' %}
+    {% set verdict = 'Partial pass' %}
+    {% set detail = "Solution passed hidden tests, but your tests failed." %}
+  {% elif hidden is sameas false and user %}
+    {% set tone = 'partial' %}
+    {% set verdict = 'Partial pass' %}
+    {% set detail = "Your tests passed, but hidden tests caught a bug your tests missed." %}
+  {% else %}
+    {% set tone = 'fail' %}
+    {% set verdict = 'FAIL' %}
+    {% set detail = none %}
+  {% endif %}
+{% else %}
+  {% set tone = 'pass' if passed else 'fail' %}
+  {% set verdict = 'PASS' if passed else 'FAIL' %}
+  {% set detail = none %}
+{% endif %}
+
+<div class="result result--{{ tone }}">
+  <header class="result__head">
+    <strong class="result__verdict">{{ verdict }}</strong>
+    {% if review and review.overall_score is not none %}
+      <span class="result__score">
+        review confidence: <strong>{{ (review.overall_score * 100) | round | int }}%</strong>
+      </span>
+    {% endif %}
+  </header>
+  {% if detail %}<p class="result__message">{{ detail }}</p>{% endif %}
+  <pre class="result__output">{{ output }}</pre>
+</div>
+
+{% if review %}
+  {% if review.method == 'claude' %}
+    <section class="review">
+      <header class="review__head">
+        <h3 class="review__title">{% if review.rubric_signals %}Interview review{% else %}Review{% endif %}</h3>
+        <span class="muted">{{ review.model_used }}</span>
+      </header>
+      {% if review.summary_md %}
+        <p class="review__summary">{{ review.summary_md }}</p>
+      {% endif %}
+      {% if review.rubric_signals %}
+        {# Algo-interviews rubric — interview-mode attempts only. #}
+        <div class="rubric-grid">
+          {% set rubric_labels = {
+            'assumption_clarification': 'assumption checks',
+            'multiple_approaches': 'multiple approaches',
+            'complexity_stated': 'complexity stated',
+            'plan_before_code': 'plan before code',
+            'code_quality': 'code quality',
+            'verification': 'edge-case verification',
+          } %}
+          {% for key, label in rubric_labels.items() %}
+            {% set v = review.rubric_signals.get(key, '') %}
+            {% if v in ('yes', 'strong') %}{% set tier = 'strong' %}
+            {% elif v in ('partial', 'ok') %}{% set tier = 'mid' %}
+            {% elif v in ('no', 'weak') %}{% set tier = 'weak' %}
+            {% else %}{% set tier = 'mid' %}{% endif %}
+            <div class="rubric-cell rubric-cell--{{ tier }}">
+              <span class="rubric-cell__label">{{ label }}</span>
+              <span class="rubric-cell__value">{{ v }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if review.per_phase %}
+        <div class="review__phases">
+          {% for phase, body in review.per_phase.items() %}
+            <div class="review-phase">
+              <h4 class="review-phase__name">{{ phase }}</h4>
+              {% if body.strength %}
+                <p class="review-phase__line"><span class="review-phase__label">+</span> {{ body.strength }}</p>
+              {% endif %}
+              {% if body.gap %}
+                <p class="review-phase__line"><span class="review-phase__label">→</span> {{ body.gap }}</p>
+              {% endif %}
+              {% if body.question %}
+                <p class="review-phase__line review-phase__line--q"><span class="review-phase__label">?</span> {{ body.question }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  {% elif review.method == 'skipped' %}
+    <section class="review review--skipped">
+      <p class="muted">
+        {% if 'API_KEY' in (review.error_text or '') %}
+          LLM review not configured · set <code>ANTHROPIC_API_KEY</code> to enable per-phase critique.
+        {% else %}
+          Review unavailable this run: {{ review.error_text or "unknown reason" }}
+        {% endif %}
+      </p>
+    </section>
+  {% endif %}
+{% endif %}
+
+<p class="result__nav">
+  <a class="primary-link" href="/today/next">Next →</a>
+  <a class="muted" href="/" style="margin-left: var(--space-4);">back to Today</a>
+</p>
+
+{% if autosave_confirmed is defined %}
+<script type="application/json" data-autosave-confirmed>{{ autosave_confirmed | tojson }}</script>
+{% endif %}

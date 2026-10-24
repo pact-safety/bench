@@ -1,0 +1,55 @@
+# Fly.io app config for Li's Bench.
+#
+# Region: Singapore (sin). Matches the Supabase project's region so
+# DB round-trips stay ~10ms instead of crossing the Pacific.
+#
+# Sizing: shared-cpu-1x with 512MB. Torch is the heaviest import; this
+# fits in 512 comfortably for single-user. Bump to shared-cpu-2x if
+# request latency rises during eval testing.
+#
+# Auto-stop policy: one machine stays warm at all times
+# (`min_machines_running = 1`) so the operator's first morning visit
+# doesn't pay the ~3.5s cold-start tax we observed in the 2026-05-17
+# auth-debug logs. Cost delta: shared-cpu-1x 512MB at full uptime is
+# roughly $2/month. `auto_stop_machines = "stop"` is kept for any
+# additional autoscaled instances (the floor is enforced separately).
+
+app = "lis-bench"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Server-side runtime. Secrets (ANTHROPIC_API_KEY, SUPABASE_*, etc.)
+  # are set via `fly secrets set` — see docs/development/deploy.md.
+  PORT = "8765"
+  SENTRY_ENVIRONMENT = "prod"
+  # Diagnostics off in prod by default. Set to "1" via `fly secrets`
+  # if you need to enable them temporarily for debugging.
+  LIS_DIAGNOSTICS_ENABLED = "0"
+
+[http_service]
+  internal_port = 8765
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 50
+    hard_limit = 100
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/__health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

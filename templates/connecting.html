@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Build connections — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--connecting">
+  <header class="page__head">
+    <h1 class="page__title">Connecting</h1>
+    <p class="page__meta">
+      Bi-directional networking tracker. Each contact has a target
+      re-touch cadence; coldest contacts surface first so the most
+      overdue ones are at the top. Actual touchpoints reset the warmth clock;
+      private notes leave follow-up state unchanged.
+      {% if view.cold_count > 0 %}
+        <strong>{{ view.cold_count }} cold</strong>
+      {% endif %}
+      {% if view.their_move_count > 0 %}
+        · <strong>{{ view.their_move_count }} owe a reply</strong>
+      {% endif %}
+    </p>
+  </header>
+
+  <section class="page__section">
+    <details class="connecting-add">
+      <summary>+ add a contact</summary>
+      <form method="post" action="/connecting" class="connecting-form">
+        <div class="connecting-form__row">
+          <label for="contact-name">Name</label>
+          <input id="contact-name" type="text" name="name" required
+                 placeholder="Jane Doe">
+        </div>
+        <div class="connecting-form__row">
+          <label for="contact-context">Context</label>
+          <input id="contact-context" type="text" name="context"
+                 placeholder="Where I know them from, why they matter">
+        </div>
+        <div class="connecting-form__row connecting-form__row--split">
+          <div>
+            <label for="contact-email">Email <span class="muted">(optional)</span></label>
+            <input id="contact-email" type="email" name="email">
+          </div>
+          <div>
+            <label for="contact-handle">Handle <span class="muted">(optional)</span></label>
+            <input id="contact-handle" type="text" name="handle"
+                   placeholder="@jane on twitter / linkedin / etc.">
+          </div>
+        </div>
+        <div class="connecting-form__row">
+          <label for="contact-cadence">Cadence
+            <span class="muted">(days between touchpoints — default 30)</span>
+          </label>
+          <input id="contact-cadence" type="number" name="cadence_days"
+                 value="30" min="1" max="3650">
+        </div>
+        <button type="submit" class="btn btn--primary">Add contact</button>
+      </form>
+    </details>
+  </section>
+
+  <section class="page__section">
+    {% if view.rows %}
+      <ul class="connecting-list">
+        {% for row in view.rows %}
+          <li class="connecting-row connecting-row--{{ row.tier }}">
+            <a class="connecting-row__main" href="/connecting/{{ row.contact.id }}">
+              <span class="connecting-row__name">{{ row.contact.name }}</span>
+              <div class="connecting-row__meta">
+                <span class="connecting-row__tier connecting-row__tier--{{ row.tier }}">
+                  {{ row.tier }}
+                </span>
+                <span class="muted">{{ days_since_phrase(row.days_since) }}</span>
+                {% if row.contact.cadence_days != 30 %}
+                  <span class="muted">· cadence {{ row.contact.cadence_days }}d</span>
+                {% endif %}
+                {% if row.their_move %}
+                  <span class="connecting-row__flag" title="Last interaction was inbound — you may owe a reply">
+                    reply may be due
+                  </span>
+                {% endif %}
+              </div>
+            </a>
+            {% if row.contact.context %}
+              <p class="connecting-row__context muted">{{ row.contact.context }}</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">
+        No {% if not show_archived %}active {% endif %}contacts yet.
+        {% if not show_archived %}
+          Add your first one above, or
+          <a href="/connecting?show_archived=1">show archived</a>.
+        {% else %}
+          <a href="/connecting">back to active</a>.
+        {% endif %}
+      </p>
+    {% endif %}
+  </section>
+
+  {% if view.rows or show_archived %}
+    <footer class="page__section">
+      <p class="muted">
+        {% if show_archived %}
+          Showing all (incl. archived) · <a href="/connecting">hide archived</a>
+        {% else %}
+          <a href="/connecting?show_archived=1">show archived</a>
+        {% endif %}
+      </p>
+    </footer>
+  {% endif %}
+</article>
+
+{% endblock %}

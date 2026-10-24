@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Question {{ answered_count + 1 }} — Initial assessment{% endblock %}
+{% block body %}
+
+<article class="assess">
+  <header class="assess__head">
+    <p class="assess__progress">
+      Question {{ answered_count + 1 }} of up to {{ max_questions }}
+      <span class="muted">(minimum {{ min_questions }})</span>
+    </p>
+    <p class="muted">
+      This is a starting snapshot: choose the answer that best matches your
+      current understanding. <strong>Not sure yet</strong> is a valid answer.
+      Answers contribute to your starting scores; they do not affect an application outcome.
+    </p>
+  </header>
+
+  {# FRONTEND-1c: the mcq-flow island adds select→commit (deliberate
+     commitment, no twitch-clicking through). Same POST contract as
+     this fallback form — question_id + answer_index to the same
+     route. #}
+  {% set option_texts = [] %}
+  {% for opt in question.options %}
+    {% set _ = option_texts.append("Not sure yet." if "not sure" in (opt.text|lower) else opt.text) %}
+  {% endfor %}
+  <div data-island="mcq-flow"
+       data-props='{{ {"run_id": run_id, "question_id": question.id, "prompt": question.prompt, "options": option_texts, "axes": question.axes | map("replace", "_", " ") | list, "answered_count": answered_count, "max_questions": max_questions, "min_questions": min_questions} | tojson }}'>
+    <form method="post" action="/assess/{{ run_id }}/answer" class="assess__form">
+      <input type="hidden" name="question_id" value="{{ question.id }}">
+
+      <h2 class="assess__prompt">{{ question.prompt }}</h2>
+
+      <fieldset class="assess__options">
+        <legend class="screen-reader-text">Answer choices</legend>
+        {% for text in option_texts %}
+          <label class="assess__option">
+            <input type="radio" name="answer_index" value="{{ loop.index0 }}" required>
+            <span class="assess__option-text">{{ text }}</span>
+          </label>
+        {% endfor %}
+      </fieldset>
+
+      <div class="assess__actions">
+        <button type="submit" class="primary">Next</button>
+      </div>
+    </form>
+  </div>
+
+  <p class="muted assess__axes">
+    Axes touched by this question:
+    {% for ax in question.axes %}<span class="tag">{{ ax.replace('_', ' ') }}</span>{% endfor %}
+  </p>
+</article>
+
+{% endblock %}

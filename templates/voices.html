@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Mentor voices — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--voices">
+  <header class="page__head">
+    <h1 class="page__title">Mentor voices</h1>
+    <p class="page__meta">
+      Reviews on this platform default to a structured engineering-method voice. You can also
+      route any submission through a named-thinker persona — same rigorous JSON output, but
+      tuned to that thinker's characteristic emphasis. Per-submission override lives on the
+      problem page; setting one here as your default applies to every future submission.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <h2 class="section-label">Roster</h2>
+    <div class="voice-grid">
+      {% for v in voices %}
+        <div class="voice-card {% if v.key == preferred_voice %}voice-card--current{% endif %}">
+          <h3 class="voice-card__name">{{ v.name }}</h3>
+          <span class="voice-card__meta">{{ v.era }}</span>
+          <span class="voice-card__works">{{ v.works }}</span>
+          <p class="voice-card__lens"><strong>Lens:</strong> {{ v.review_lens }}</p>
+          <blockquote class="voice-card__provocation">{{ v.provocation }}</blockquote>
+          {% if v.key == preferred_voice %}
+            <p class="muted"><strong>Currently your default.</strong></p>
+          {% else %}
+            <form method="post" action="/voices/prefer">
+              <input type="hidden" name="voice_key" value="{{ v.key }}">
+              <button type="submit" class="bordered-button">Make this my default</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="page__section page__section--muted">
+    <h3 class="section-label">How this works</h3>
+    <p class="muted">
+      The selected voice's persona is prepended to the review system prompt — the structured
+      per-phase output, the anti-sycophancy rules, and the rubric all remain. What changes is
+      the <em>emphasis</em>: Hamming will flag courage gaps, Petroski will name failure modes,
+      Meadows will push you toward higher leverage points. Same problem, different lens.
+    </p>
+    <p class="muted">
+      Adding more voices is a 12-line append in <code>app/services/voices.py</code> — open an
+      issue or send a PR with a thinker whose lens you want.
+    </p>
+  </section>
+</article>
+
+{% endblock %}

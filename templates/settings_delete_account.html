@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Delete account — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--settings-delete">
+  <header class="page__head">
+    <h1 class="page__title">Delete account</h1>
+    <p class="page__meta">
+      Permanently wipes everything tied to your user — including
+      writings, JDs, feedback, credentials, and the practice data
+      you'd lose on a regular reset.
+      <strong>Irreversible.</strong>
+      If you just want to clear practice progress (and keep your
+      authored content), <a class="action-link" href="/settings/reset">reset progress</a> is what you want.
+    </p>
+  </header>
+
+  <section class="page__section reset__counts">
+    <h2 class="section-label">Will delete</h2>
+    {% if total_rows == 0 %}
+      <p class="muted">No data on file under <code>{{ session_email }}</code>. Deleting now just signs you out + drops your bench user row.</p>
+    {% else %}
+      <ul class="reset__list">
+        {% for table, n in counts.items() %}
+          <li class="reset__row {% if n == 0 %}reset__row--empty{% endif %}">
+            <span class="reset__table">{{ table.replace('_',' ') }}</span>
+            <span class="reset__count">{{ n }}</span>
+          </li>
+        {% endfor %}
+        <li class="reset__row">
+          <span class="reset__table">your bench user row (settings + display name + a11y prefs)</span>
+          <span class="reset__count">will clear</span>
+        </li>
+      </ul>
+      <p class="muted reset__total">{{ total_rows }} row(s) total · plus your bench user record itself.</p>
+    {% endif %}
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">What this does NOT do</h2>
+    <ul class="reset__keep">
+      <li>Doesn't revoke your <strong>GitHub OAuth grant</strong>. To fully sever auth, go to <a href="https://github.com/settings/applications" target="_blank" rel="noopener">github.com/settings/applications</a> → find this app → Revoke.</li>
+      <li>Doesn't delete your <strong>Supabase auth.users entry</strong> — the bench can't mutate Supabase's internal auth table. The entry stays until you delete it via the Supabase dashboard (Authentication → Users → row → delete).</li>
+      <li>If you sign back in via GitHub later, the bench treats you as a brand-new user and lands you on <code>/onboarding</code>.</li>
+    </ul>
+  </section>
+
+  <section class="page__section reset__actions">
+    <form method="post" action="/settings/delete-account" class="reset__form" id="delete-account-form">
+      <input type="hidden" name="confirm" value="yes">
+
+      {# Phrase-typed confirmation. Stricter than the reset flow's
+         row-count gate — operator must type the exact phrase verbatim. #}
+      <label class="reset__type-confirm">
+        <span>
+          Type <strong><code id="delete-token">DELETE MY ACCOUNT</code></strong>
+          to confirm. This can't be undone.
+        </span>
+        <input type="text" id="delete-token-input" name="typed_phrase" autocomplete="off"
+               placeholder="type the phrase"
+               aria-describedby="delete-token-help">
+      </label>
+
+      <button type="submit" class="btn-danger" id="delete-submit" disabled aria-disabled="true">
+        Yes, permanently delete my account
+      </button>
+      <a class="muted" href="/settings">cancel · back to settings</a>
+    </form>
+  </section>
+</article>
+
+<script>
+  // Type-the-phrase gate. Enables the destructive submit only when the
+  // user types the exact phrase shown above. Disabled state is the
+  // default to make it impossible to single-click into a deletion.
+  (function () {
+    var input = document.getElementById("delete-token-input");
+    var submit = document.getElementById("delete-submit");
+    var token = (document.getElementById("delete-token") || {}).textContent;
+    if (!input || !submit || !token) return;
+    token = token.trim();
+    function update() {
+      var match = input.value.trim() === token;
+      submit.disabled = !match;
+      submit.setAttribute("aria-disabled", match ? "false" : "true");
+    }
+    input.addEventListener("input", update);
+    update();
+  })();
+</script>
+
+{% endblock %}

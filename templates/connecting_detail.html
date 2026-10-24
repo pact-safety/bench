@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block main_class %}container--narrow{% endblock %}
+{% block title %}{{ contact.name }} — Connecting{% endblock %}
+{% block body %}
+
+<article class="page page--connecting-detail">
+  <header class="page__head">
+    <p class="page__meta"><a href="/connecting">← all contacts</a></p>
+    <h1 class="page__title">
+      {{ contact.name }}
+      {% if contact.archived %}<span class="tag">archived</span>{% endif %}
+    </h1>
+    <p class="page__meta">
+      <span class="tag" title="Stable connection id — use it to reference this contact anywhere">#{{ contact.id }}</span>
+      · <span class="connecting-row__tier connecting-row__tier--{{ tier }}">{{ tier }}</span>
+      · last touched {{ days_since_label }}
+      · cadence {{ contact.cadence_days }}d
+      {% if contact.email %} · <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% endif %}
+      {% if contact.handle %} · {{ contact.handle }}{% endif %}
+    </p>
+    {% if contact.context %}
+      <p class="page__meta">{{ contact.context }}</p>
+    {% endif %}
+  </header>
+
+  <section class="page__section">
+    <h2 class="section-label">Log an interaction</h2>
+    {# Feedback #42: "Log it" was too easy to mis-click. Same native
+       confirm idiom as the archive button below — log → confirm → logged. #}
+    <form method="post" action="/connecting/{{ contact.id }}/interactions"
+          class="connecting-form"
+          data-confirm-interaction="{{ contact.name | e }}">
+      <div class="connecting-form__row connecting-form__row--split">
+        <div>
+          <label for="int-kind">Kind</label>
+          <select id="int-kind" name="kind" required>
+            <option value="sent">Sent a message</option>
+            <option value="received">Received a message</option>
+            <option value="meeting">Meeting</option>
+            <option value="call">Call</option>
+            <option value="message">Quick message (chat)</option>
+            <option value="note">Private note (no direct touchpoint)</option>
+          </select>
+        </div>
+        <div>
+          <label for="int-direction">Direction
+            <span class="muted">(optional)</span>
+          </label>
+          <select id="int-direction" name="direction">
+            <option value="">— mutual / not applicable —</option>
+            <option value="outbound">I reached out</option>
+            <option value="inbound">They reached out</option>
+          </select>
+        </div>
+      </div>
+      <div class="connecting-form__row">
+        <label for="int-date">When</label>
+        {# Empty value; the script at the bottom defaults to today
+           in the operator's local timezone. A server-side default
+           would need timezone awareness; the date picker is
+           operator-local anyway. #}
+        <input id="int-date" type="date" name="occurred_at" value="">
+      </div>
+      <div class="connecting-form__row">
+        <label for="int-notes">Notes <span class="muted">(optional)</span></label>
+        <textarea id="int-notes" name="notes" rows="3"
+                  placeholder="What did you talk about? Any follow-up?"></textarea>
+      </div>
+      <button type="submit" class="btn btn--primary">Log it</button>
+    </form>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">History · {{ interactions | length }}</h2>
+    {% if interactions %}
+      <ul class="connecting-history">
+        {% for it in interactions %}
+          <li class="connecting-history__row">
+            <div class="connecting-history__head">
+              <span class="connecting-history__kind">{{ it.kind }}</span>
+              {% if it.direction %}
+                <span class="connecting-history__direction
+                             connecting-history__direction--{{ it.direction }}">
+                  {{ it.direction }}
+                </span>
+              {% endif %}
+              <time class="muted">{{ it.occurred_at.strftime('%Y-%m-%d') }}</time>
+            </div>
+            {% if it.notes %}
+              <p class="connecting-history__notes">{{ it.notes }}</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No interactions logged yet — add a touchpoint or private note above.</p>
+    {% endif %}
+  </section>
+
+  <footer class="page__section connecting-detail__danger">
+    {% if contact.archived %}
+      <form method="post" action="/connecting/{{ contact.id }}/reopen" style="display:inline">
+        <button type="submit" class="btn btn--ghost">Un-archive</button>
+      </form>
+    {% else %}
+      <form method="post" action="/connecting/{{ contact.id }}/archive" style="display:inline"
+            data-confirm-archive="Archive this contact? History is preserved; they just won't appear in the default list.">
+        <button type="submit" class="btn btn--danger">Archive contact</button>
+      </form>
+    {% endif %}
+  </footer>
+</article>
+
+<script>
+  document.querySelectorAll("[data-confirm-interaction], [data-confirm-archive]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      // Names stay in escaped HTML data, never in executable JavaScript.
+      var message = form.dataset.confirmArchive;
+      if (form.hasAttribute("data-confirm-interaction")) {
+        var name = form.dataset.confirmInteraction;
+        message = form.elements.kind.value === "note"
+          ? "Save a private note about " + name + "? Their warmth and reply state stay unchanged."
+          : "Log this interaction with " + name + "?";
+      }
+      if (!window.confirm(message)) event.preventDefault();
+    });
+  });
+
+  // Default the date picker to today on first load (browser-local).
+  // Server-side default would require timezone awareness; the date
+  // picker is operator-local anyway.
+  (function () {
+    var el = document.getElementById("int-date");
+    if (el && !el.value) {
+      var d = new Date();
+      el.value = d.getFullYear() + "-"
+                + String(d.getMonth() + 1).padStart(2, "0") + "-"
+                + String(d.getDate()).padStart(2, "0");
+    }
+  })();
+</script>
+
+{% endblock %}

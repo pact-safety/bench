@@ -1,0 +1,11 @@
+{# Compact 5-stat strip for the home page. Pentagon stays the
+   detail view on /settings + /assess/<id>/result. #}
+{% set geom = skill_scores | pentagon_geometry %}
+<div class="skill-strip">
+  {% for p in geom.points %}
+    <div class="skill-strip__cell skill-strip__cell--{{ p.tier }}">
+      <span class="skill-strip__label">{{ p.label }}</span>
+      <span class="skill-strip__pct">{{ p.pct }}<span class="skill-strip__unit">%</span></span>
+    </div>
+  {% endfor %}
+</div>

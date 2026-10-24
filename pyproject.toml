@@ -1,0 +1,83 @@
+[project]
+name = "lis-bench"
+version = "0.1.1"
+description = "Li's Bench — daily-driver drill tool for research engineer interview prep."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "tomli>=2.0;python_version<'3.11'",
+    "pyyaml>=6.0",
+    "mistune>=3.0",
+    "pygments>=2.17",
+    "httpx>=0.27",
+    "anthropic>=0.40",
+    "sentry-sdk[fastapi]>=2.18",
+    "psycopg[binary,pool]>=3.2",
+    "supabase>=2.9",
+    # Deploy hardening (LIS-280): verified JWT decoding and rate
+    # limiting before public traffic.
+    "pyjwt>=2.8",
+    "slowapi>=0.1.9",
+    # PDF text extraction for the /aim credentials feature. Without
+    # this, the credentials review page shows "[pdf extraction failed:
+    # No module named 'pypdf']" and the analyzer falls back with no
+    # text to work on. Pure-Python, no native deps.
+    "pypdf>=4.0",
+    # In-process background scheduler for the Saturday Reflect pre-
+    # generation cron (GH #229). Lightweight; single-tenant; no need
+    # for Celery / Redis. Falls back to "operator clicks Generate" if
+    # the scheduler fails to start.
+    "apscheduler>=3.10",
+    # MCP server SDK for the bench's claude.ai/Claude Code integration
+    # surface (BEN-81). The bench exposes a custom MCP server at /mcp
+    # so chats can call get_current_focus() etc. instead of pasting
+    # state. The [cli] extra ships the development helpers; runtime
+    # only needs the core `mcp` package.
+    # Cap below 2.0: mcp 2.0.0 (2026-08) removed `mcp.server.fastmcp`, which
+    # app/mcp_server.py imports — an unpinned >=1.0 let CI + Docker pull 2.0
+    # and broke both the test suite (collection error) and app boot, blocking
+    # every deploy since. Stay on the 1.x line until the FastMCP-2.0 migration
+    # is done deliberately.
+    "mcp[cli]>=1.0,<2",
+    # RSS / Atom feed parser for /news (rss-news-feed Phase 1). Pure
+    # Python, no native deps; well-trodden. Used by news_poller
+    # service to ingest the labs' + alignment-forum's feeds hourly.
+    "feedparser>=6.0",
+]
+
+[project.optional-dependencies]
+# Installed lazily by the user's local environment; ref solutions need
+# torch to run the test cases.
+ml = [
+    "torch @ https://download.pytorch.org/whl/cpu/torch-2.2.2%2Bcpu-cp311-cp311-linux_x86_64.whl ; platform_system == 'Linux' and platform_machine == 'x86_64' and python_version == '3.11'",
+    "torch>=2.2; platform_system != 'Linux' or platform_machine != 'x86_64' or python_version != '3.11'",
+    "numpy>=1.26",
+]
+# Test harness. Tier-1 unit tests need only pytest + pytest-mock.
+# Integration tier reuses TestClient (already shipped via fastapi).
+dev = ["pytest>=8.0", "pytest-mock>=3.12"]
+# Documentation site. `mkdocs serve` to preview locally;
+# `mkdocs build` emits a static site to ./site/. See docs/index.md
+# and mkdocs.yml.
+docs = [
+    "mkdocs-material>=9.5",
+    "pymdown-extensions>=10.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: integration tests that need DATABASE_URL + a live Supabase",
+]
+# Quiet output by default; -v from CLI for full names.
+addopts = "-ra --tb=short"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

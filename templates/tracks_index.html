@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Tracks — Li's Bench{% endblock %}
+{% block body %}
+<article class="page learning-page">
+  <header class="page__head">
+    <h1 class="page__title">Tracks</h1>
+    <p>Choose one curriculum. Read or practice, explain what you learned, and save your next step. Progress stays saved when you switch.</p>
+    {% if is_admin %}<p><a href="/track-assessments/review">Review section assessments</a></p>{% endif %}
+  </header>
+  {% if active_row and active_row.is_available and active_row.satisfied_count | default(active_row.completed_count) < active_row.total_sections %}
+  <section class="next-action page__section">
+    <p class="next-action__label">Continue your track</p>
+    <h2 class="next-action__title">{{ active_row.track.title }}</h2>
+    <p>{{ active_row.completed_count }}/{{ active_row.total_sections }} core practice checks completed{% if active_row.exempt_count %} · {{ active_row.exempt_count }} tested out{% endif %}.</p>
+    <a class="btn btn--primary" href="/tracks/{{ active_row.track.slug }}#section-{{ active_row.cursor }}">Continue</a>
+  </section>
+  {% endif %}
+  <section class="page__section">
+    <h2>Ready to study</h2>
+    <p>Start with a 30-minute block. A section can take several sessions; its full estimate appears inside.</p>
+    <ul class="learning-outline">
+    {% for row in track_rows if row.is_available %}
+      <li class="learning-section">
+        <h3><a href="/tracks/{{ row.track.slug }}">{{ row.track.title }}</a></h3>
+        <p>{{ row.track.description }}</p>
+        {% if row.first_section %}<p>Recommended starting point: {{ row.first_section.title }}</p>{% endif %}
+        {% if row.completed_count or row.exempt_count %}<p>{{ row.completed_count }}/{{ row.total_sections }} core practice checks completed{% if row.exempt_count %} · {{ row.exempt_count }} tested out{% endif %}.</p>{% endif %}
+        <a class="bordered-button" href="/tracks/{{ row.track.slug }}">{% if row.is_active %}View track{% elif row.is_paused %}Review and resume{% else %}Read notes and start{% endif %}</a>
+      </li>
+    {% else %}<li>No tracks are ready yet.</li>{% endfor %}
+    </ul>
+  </section>
+  {% if track_rows | rejectattr('is_available') | list %}
+  <section class="page__section" id="request-tracks">
+    <h2>Request a track</h2>
+    <p>These curricula are pending audit. Requests go to the feedback inbox to help prioritize reviews. Existing progress is preserved.</p>
+    <ul class="learning-outline">
+    {% for row in track_rows if not row.is_available %}
+      <li class="learning-section">
+        <h3>{{ row.track.title }}</h3><p>{{ row.track.description }}</p>
+        <p class="muted">Pending audit{% if row.is_active or row.is_paused %} · saved progress retained{% endif %}</p>
+        <form method="post" action="/tracks/{{ row.track.slug }}/request"><button type="submit" class="bordered-button">Request this track</button></form>
+        {% if row.is_active or row.is_paused %}<p><a href="/tracks/{{ row.track.slug }}">View saved work</a></p>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

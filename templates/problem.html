@@ -1,0 +1,909 @@
+{% extends "base.html" %}
+{% block title %}{{ problem.title }}{% endblock %}
+{% block body %}
+
+<article class="problem {% if interview_mode %}problem--interview{% endif %}">
+  <header class="problem__head">
+    {% if is_warmup_session %}<div class="warmup-banner">warmup — this attempt does not affect scheduling</div>{% endif %}
+    {% if interview_mode %}
+      <div class="interview-banner">
+        <div class="interview-banner__left">
+          <span class="interview-banner__label">Interview mode</span>
+          <span class="muted">timed · no aids · stricter rubric</span>
+        </div>
+        <div class="interview-banner__timer" id="interview-timer">{{ problem.time_bucket }}:00</div>
+      </div>
+    {% endif %}
+    <div class="problem__meta">
+      <span class="badge badge--{{ problem.problem_type }}">{{ problem.problem_type.replace('_',' ') }}</span>
+      <span class="badge badge--time">{{ problem.time_bucket }} min</span>
+      <span class="badge badge--diff">{{ problem.difficulty }}</span>
+      {% if em_phases %}
+        <span class="badge badge--em">EM {{ em_mode }}</span>
+      {% endif %}
+      {% for t in problem.domain_tags %}<span class="tag">{{ t }}</span>{% endfor %}
+    </div>
+    {% if chain_step %}
+      <p class="page__meta">Step {{ chain_step.step }} of {{ chain_step.total }}</p>
+    {% endif %}
+    <h1>{{ problem.title }}</h1>
+    {% if not interview_mode %}<p><a href="/mira?problem={{ problem.slug }}" target="_blank" rel="noopener">Think it through with Mira ↗</a> · coaching questions, without answers</p>{% endif %}
+    {% if not interview_mode and not is_warmup_session %}
+      <p class="problem__try-interview muted">
+        Practicing freely. <a href="/problem/{{ problem.slug }}?mode=interview">→ try this in interview mode</a> for a timed, no-aids run.
+      </p>
+    {% endif %}
+  </header>
+
+  <section class="problem__prompt md">
+    {{ problem.content_md | markdown }}
+  </section>
+
+  {% if grouped_refs and not interview_mode %}
+    <details class="refs">
+      <summary>references for this problem</summary>
+      {% for phase, label, items in grouped_refs %}
+        <div class="refs__group refs__group--{{ phase }}">
+          <h4 class="refs__group-label">{{ label }}</h4>
+          <ul class="refs__list">
+            {% for r in items %}
+              <li class="refs__item">
+                {% if r.url %}
+                  <a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>
+                {% else %}
+                  <span class="refs__title">{{ r.title }}</span>
+                {% endif %}
+                {% if r.book %}<span class="refs__book">{{ r.book }}{% if r.page %} · p.{{ r.page }}{% endif %}</span>{% elif r.page %}<span class="refs__book">p.{{ r.page }}</span>{% endif %}
+                {% if r.why %}<span class="refs__why">{{ r.why }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </details>
+  {% endif %}
+
+  <form class="solve" hx-post="/submit/{{ problem.slug }}" hx-target="#result" hx-swap="innerHTML" hx-indicator="#run-tests-indicator" hx-disabled-elt="#run-tests-btn" hx-on::before-request="var btn = document.getElementById('run-tests-btn'); if (btn) btn.setAttribute('aria-busy', 'true');" hx-on::after-request="var btn = document.getElementById('run-tests-btn'); if (btn) btn.setAttribute('aria-busy', 'false');" hx-on::response-error="var btn = document.getElementById('run-tests-btn'); if (btn) btn.setAttribute('aria-busy', 'false');" id="solve-form">
+    <input type="hidden" name="started_at_iso" id="started_at_iso">
+    <input type="hidden" name="time_per_phase_json" id="time_per_phase_json" value="{}">
+    {# Phase-aware hint ladder. The JS in this page maintains a per-
+       phase counter and posts it back as the user clicks "Stuck?". On
+       submit it goes to /submit so the attempt row records how many
+       hints were used at what tier; the scheduler penalizes by max
+       tier reached (see app/services/scheduler.py). #}
+    <input type="hidden" name="hints_used_json" id="hints_used_json" value="{}">
+    {# Interview-mode v1 (migration 014). Snapshot the budgets the
+       operator started with so the post-session review stays accurate
+       even if the problem's TOML budgets are retuned later. cutoff_bool
+       is set to 1 by the JS only when the session timer hits zero and
+       the form auto-submits. #}
+    <input type="hidden" name="phase_budgets_json" id="phase_budgets_json"
+           value='{{ (problem.phase_budgets or {}) | tojson }}'>
+    <input type="hidden" name="cutoff_bool" id="cutoff_bool" value="0">
+    <script>document.getElementById("started_at_iso").value = new Date().toISOString();</script>
+
+{% import "_bubbles.html" as b with context %}
+    {{ b.slot('phase_rail') }}
+    {% if "explore" in em_phases %}
+      <section class="phase" data-phase="explore">
+        <header class="phase__head">
+          <span class="phase__num">1</span>
+          <h2 class="phase__name">Explore</h2>
+          <span class="phase__timer" data-timer="explore">0:00</span>
+        </header>
+        <p class="phase__hint">{{ em_prompts.explore }}</p>
+        <textarea name="explore_notes" id="explore_notes" rows="6" spellcheck="false" placeholder="I/O contract, examples, edge cases…" data-autosave data-voice-note data-voice-note-label="Dictate Explore"></textarea>
+        <span class="autosave-status muted" data-autosave-status="explore_notes" aria-live="polite"></span>
+        {% if not interview_mode %}
+          <div class="phase__hint-row">
+            <button type="button" class="muted-button hint-trigger" data-hint-phase="explore" data-hint-slug="{{ problem.slug }}" data-hint-notes-id="explore_notes">
+              Stuck? Get a nudge
+            </button>
+            <span class="hint-status muted" data-hint-status="explore"></span>
+          </div>
+          <div class="hint-slot" data-hint-slot="explore" aria-live="polite"></div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if "brainstorm" in em_phases %}
+      <section class="phase" data-phase="brainstorm">
+        <header class="phase__head">
+          <span class="phase__num">2</span>
+          <h2 class="phase__name">Brainstorm</h2>
+          <span class="phase__timer" data-timer="brainstorm">0:00</span>
+        </header>
+        <p class="phase__hint">{{ em_prompts.brainstorm }}</p>
+        <textarea name="brainstorm_notes" id="brainstorm_notes" rows="6" spellcheck="false" placeholder="2–3 approaches, complexity, trade-offs…" data-autosave data-voice-note data-voice-note-label="Dictate Brainstorm"></textarea>
+        <span class="autosave-status muted" data-autosave-status="brainstorm_notes" aria-live="polite"></span>
+        {% if not interview_mode %}
+          <div class="phase__hint-row">
+            <button type="button" class="muted-button hint-trigger" data-hint-phase="brainstorm" data-hint-slug="{{ problem.slug }}" data-hint-notes-id="brainstorm_notes">
+              Stuck? Get a nudge
+            </button>
+            <span class="hint-status muted" data-hint-status="brainstorm"></span>
+          </div>
+          <div class="hint-slot" data-hint-slot="brainstorm" aria-live="polite"></div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if "plan" in em_phases %}
+      <section class="phase" data-phase="plan">
+        <header class="phase__head">
+          <span class="phase__num">3</span>
+          <h2 class="phase__name">Plan</h2>
+          <span class="phase__timer" data-timer="plan">0:00</span>
+        </header>
+        <p class="phase__hint">{{ em_prompts.plan }}</p>
+        <textarea name="plan_notes" id="plan-notes" rows="7" spellcheck="false" placeholder="Step-by-step outline, invariants, axis discipline…" data-autosave data-voice-note data-voice-note-label="Dictate Plan"></textarea>
+        <span class="autosave-status muted" data-autosave-status="plan_notes" aria-live="polite"></span>
+        {% if not interview_mode %}
+          <div class="phase__hint-row">
+            <button type="button" class="muted-button hint-trigger" data-hint-phase="plan" data-hint-slug="{{ problem.slug }}" data-hint-notes-id="plan-notes">
+              Stuck? Get a nudge
+            </button>
+            <span class="hint-status muted" data-hint-status="plan"></span>
+          </div>
+          <div class="hint-slot" data-hint-slot="plan" aria-live="polite"></div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {{ b.slot('editor') }}
+    <section class="phase phase--implement" data-phase="implement">
+      <header class="phase__head">
+        {% if em_phases %}<span class="phase__num">{{ em_phases.index("implement") + 1 }}</span>{% endif %}
+        <h2 class="phase__name">{% if em_phases %}Implement{% else %}Your solution{% endif %}</h2>
+        {% if em_phases %}<span class="phase__timer" data-timer="implement">0:00</span>{% endif %}
+      </header>
+
+      {% if em_phases and config.em.plan_gate_chars > 0 and "plan" in em_phases %}
+        <div class="plan-gate" id="plan-gate">
+          <span class="plan-gate__msg">Plan section needs at least {{ config.em.plan_gate_chars }} characters to unlock the editor.</span>
+          <button type="button" id="plan-gate-bypass" class="plan-gate__bypass">unlock anyway</button>
+        </div>
+      {% endif %}
+
+      <div class="editor-tabs" role="tablist" aria-label="Solution and tests editors">
+        <button
+          type="button"
+          class="editor-tab is-active"
+          data-editor-tab="solution"
+          aria-controls="editor-solution"
+          aria-selected="true"
+        >
+          Solution
+        </button>
+        <button
+          type="button"
+          class="editor-tab"
+          data-editor-tab="user-tests"
+          aria-controls="editor-user-tests"
+          aria-selected="false"
+        >
+          Your tests
+        </button>
+      </div>
+
+      <section class="editor-panel" id="editor-solution" data-editor-panel="solution">
+        <div class="lang-toggle">
+          <label><input type="radio" name="language" value="python" checked> Python</label>
+          {% if problem.starter_code_rust or problem.reference_solution_rust %}
+            <label><input type="radio" name="language" value="rust"> Rust</label>
+          {% endif %}
+        </div>
+
+        <textarea id="code" name="code" data-autosave rows="22" spellcheck="false" autocapitalize="off" autocomplete="off">{{ problem.starter_code_python or "" }}</textarea>
+        {% if config.ui.use_codemirror %}
+          {# FRONTEND-1e: bundled CodeMirror island (no CDN). The
+             textarea above stays the form field + no-JS fallback. #}
+          <div data-island="compose-editor" id="cm-mount" data-active="0"></div>
+        {% endif %}
+        {% if not interview_mode %}
+          <div class="phase__hint-row">
+            <button type="button" class="muted-button hint-trigger" data-hint-phase="implement" data-hint-slug="{{ problem.slug }}" data-hint-code-id="code">
+              Stuck? Get a nudge
+            </button>
+            <span class="hint-status muted" data-hint-status="implement"></span>
+          </div>
+          <div class="hint-slot" data-hint-slot="implement" aria-live="polite"></div>
+        {% endif %}
+      </section>
+
+      <section class="editor-panel" id="editor-user-tests" data-editor-panel="user-tests" hidden>
+        <p class="muted editor-panel__hint">
+          Optional: write your own tests. We'll run your solution with these
+          tests and with hidden tests.
+        </p>
+        <textarea
+          id="user-tests-code"
+          name="user_tests_code"
+          rows="16"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          data-autosave
+          data-voice-note
+          data-voice-note-label="Dictate tests"
+        ></textarea>
+        <span class="autosave-status muted" data-autosave-status="user_tests_code" aria-live="polite"></span>
+      </section>
+    </section>
+
+    {% if "verify" in em_phases %}
+      <section class="phase" data-phase="verify">
+        <header class="phase__head">
+          <span class="phase__num">{{ em_phases.index("verify") + 1 }}</span>
+          <h2 class="phase__name">Verify</h2>
+          <span class="phase__timer" data-timer="verify">0:00</span>
+        </header>
+        <p class="phase__hint">{{ em_prompts.verify }}</p>
+        <textarea name="verify_notes" id="verify_notes" rows="5" spellcheck="false" placeholder="Hand-traced tests, properties, boundary checks…" data-autosave data-voice-note data-voice-note-label="Dictate Verify"></textarea>
+        <span class="autosave-status muted" data-autosave-status="verify_notes" aria-live="polite"></span>
+        {% if not interview_mode %}
+          <div class="phase__hint-row">
+            <button type="button" class="muted-button hint-trigger" data-hint-phase="verify" data-hint-slug="{{ problem.slug }}" data-hint-notes-id="verify_notes">
+              Stuck? Get a nudge
+            </button>
+            <span class="hint-status muted" data-hint-status="verify"></span>
+          </div>
+          <div class="hint-slot" data-hint-slot="verify" aria-live="polite"></div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if not interview_mode %}
+      <details class="aux">
+        <summary>reference solution (mark as looked-at)</summary>
+        <input type="hidden" name="looked_at_solution" value="0" id="looked_at_solution_field">
+        <button type="button" onclick="document.getElementById('looked_at_solution_field').value='1'">acknowledge</button>
+        {% if problem.reference_solution_python %}
+          {{ problem.reference_solution_python | code("python") }}
+        {% else %}
+          <p class="muted">—</p>
+        {% endif %}
+        {% if problem.reference_solution_rust %}
+          <h4>rust</h4>
+          {{ problem.reference_solution_rust | code("rust") }}
+        {% endif %}
+      </details>
+
+      {% if problem.pitfalls_md %}
+        <details class="aux">
+          <summary>common pitfalls (mark as looked-at)</summary>
+          <input type="hidden" name="looked_at_pitfalls" value="0" id="looked_at_pitfalls_field">
+          <button type="button" onclick="document.getElementById('looked_at_pitfalls_field').value='1'">acknowledge</button>
+          <div class="md">{{ problem.pitfalls_md | markdown }}</div>
+        </details>
+      {% endif %}
+
+      {% if problem.key_insight %}
+        <details class="aux">
+          <summary>key insight (reveal after attempt)</summary>
+          <div class="md">{{ problem.key_insight | markdown }}</div>
+        </details>
+      {% endif %}
+    {% else %}
+      <input type="hidden" name="looked_at_solution" value="0">
+      <input type="hidden" name="looked_at_pitfalls" value="0">
+      <p class="interview-aids-hidden muted">
+        Aids hidden in interview mode. Reference solution, pitfalls, and
+        key insight will be available on the result page after you submit.
+      </p>
+    {% endif %}
+    <input type="hidden" name="interview_mode_bool" value="{{ '1' if interview_mode else '0' }}">
+
+
+    <div class="confidence">
+      <span>confidence after solving (1 = guessed, 5 = could teach it):</span>
+      <label><input type="radio" name="confidence" value="1"> 1</label>
+      <label><input type="radio" name="confidence" value="2"> 2</label>
+      <label><input type="radio" name="confidence" value="3" checked> 3</label>
+      <label><input type="radio" name="confidence" value="4"> 4</label>
+      <label><input type="radio" name="confidence" value="5"> 5</label>
+    </div>
+
+    <details class="aux">
+      <summary>notes — what you'd want to remember for next time</summary>
+      <textarea name="notes_md" rows="4" spellcheck="true" placeholder="One sentence is fine. What was the trap? What would speed you up next time?" data-autosave data-voice-note data-voice-note-label="Dictate notes"></textarea>
+      <span class="autosave-status muted" data-autosave-status="notes_md" aria-live="polite"></span>
+    </details>
+
+    {# Voice picker — which named-thinker persona reviews this attempt.
+       Hidden in interview mode (rubric is the rubric; no aesthetic
+       choice to make). Default picks from the user's preference.
+       Visually elevated to a panel-style block (not the previous bare
+       label) so the user sees it before clicking "run tests" — earlier
+       version (feedback #32) was missed because it sat as a thin label
+       above the button. #}
+    {% if not interview_mode and voices %}
+      <div class="voice-picker voice-picker--panel">
+        <div class="voice-picker__row">
+          <label for="voice-picker">
+            <span class="voice-picker__label">Reviewed by</span>
+            <select name="voice_key" class="voice-picker__select" id="voice-picker">
+              {% for v in voices %}
+                <option value="{{ v.key }}" {% if v.key == preferred_voice %}selected{% endif %}>
+                  {{ v.name }}{% if v.default %} (default){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <a class="muted voice-picker__manage" href="/voices">Browse voices →</a>
+        </div>
+        <p class="voice-picker__lens" id="voice-picker-lens" aria-live="polite"></p>
+      </div>
+    {% endif %}
+
+    <button class="primary" type="submit" id="run-tests-btn" aria-busy="false">run tests</button>
+    <span
+      class="run-tests-indicator htmx-indicator"
+      id="run-tests-indicator"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span class="run-tests-spinner" aria-hidden="true"></span>
+      <span class="muted">Running tests…</span>
+    </span>
+  </form>
+  {% if not interview_mode and voices %}
+  <script>
+    // When the user picks a different voice, show its review_lens
+    // beneath the dropdown so they can see what that voice will
+    // emphasize before submitting. Data lives in JSON so we don't
+    // have to round-trip for it.
+    (function () {
+      var data = {
+        {% for v in voices %}"{{ v.key }}": {{ {"name": v.name, "lens": v.review_lens, "provocation": v.provocation} | tojson }}{% if not loop.last %},{% endif %}{% endfor %}
+      };
+      var sel = document.getElementById("voice-picker");
+      var out = document.getElementById("voice-picker-lens");
+      if (!sel || !out) return;
+      function update() {
+        var v = data[sel.value];
+        if (!v) { out.textContent = ""; return; }
+        out.innerHTML = v.lens
+          ? "<em>Lens:</em> " + v.lens.replace(/</g, "&lt;")
+          : "";
+      }
+      sel.addEventListener("change", update);
+      update();
+    })();
+  </script>
+  {% endif %}
+
+  <section id="result"></section>
+</article>
+
+<script>
+  // Resubmit guard for `run tests`.
+  //
+  // 1) Block a second rapid submit while the first HTMX request is
+  //    still in flight (immediate suppress on submit capture).
+  // 2) Keep the existing confirm() for deliberate reruns after a
+  //    previous request has already completed.
+  (function () {
+    var form = document.getElementById("solve-form");
+    if (!form) return;
+
+    var submitInFlight = false;
+    var submissionCount = 0;
+
+    function clearSubmitGuard(evt) {
+      // Defensive: only clear when the event corresponds to this form.
+      if (evt && evt.detail && evt.detail.elt && evt.detail.elt !== form) return;
+      submitInFlight = false;
+    }
+
+    form.addEventListener("submit", function (evt) {
+      if (submitInFlight) {
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        return;
+      }
+      submitInFlight = true;
+    }, true);
+
+    form.addEventListener("htmx:afterRequest", clearSubmitGuard);
+    form.addEventListener("htmx:responseError", clearSubmitGuard);
+    form.addEventListener("htmx:sendError", clearSubmitGuard);
+    form.addEventListener("htmx:timeout", clearSubmitGuard);
+
+    form.addEventListener("htmx:confirm", function (evt) {
+      if (form.dataset.cutoffLocked === "1") return;
+      submissionCount += 1;
+      if (submissionCount <= 1) return;   // first submit fires freely
+
+      evt.preventDefault();
+      var ok = window.confirm(
+        "You've already run tests on this attempt — running again will " +
+        "fire another Claude review and stack a new entry under the " +
+        "first. Continue?"
+      );
+      if (ok) evt.detail.issueRequest();
+      else {
+        submissionCount -= 1;  // user backed out; don't count it
+        submitInFlight = false;
+      }
+    });
+  })();
+
+  // Solution vs "Your tests" tabs in the implement phase.
+  (function () {
+    var tabs = document.querySelectorAll("[data-editor-tab]");
+    var panels = document.querySelectorAll("[data-editor-panel]");
+    if (!tabs.length || !panels.length) return;
+
+    function activate(name) {
+      tabs.forEach(function (tab) {
+        var selected = tab.dataset.editorTab === name;
+        tab.classList.toggle("is-active", selected);
+        tab.setAttribute("aria-selected", selected ? "true" : "false");
+      });
+      panels.forEach(function (panel) {
+        var show = panel.dataset.editorPanel === name;
+        panel.hidden = !show;
+      });
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        activate(tab.dataset.editorTab);
+      });
+    });
+
+    activate("solution");
+  })();
+
+  // Seed a first-visit test skeleton without interfering with autosave
+  // recovery. Seed only when no account-scoped copy needs a decision.
+  (function () {
+    var ta = document.getElementById("user-tests-code");
+    if (!ta) return;
+    var SKELETON = [
+      "# Write tests that validate your solution above. The grader runs:",
+      "#   your solution + your tests + hidden tests",
+      "# All must pass for credit. Good tests catch bugs the prompt hints at;",
+      "# weak tests just exercise the happy path.",
+      "",
+      "import torch",
+      "",
+      "def test_baseline_runs():",
+      "    # Your test here",
+      "    pass",
+    ].join("\n");
+
+    function seed() {
+      if (ta.value) return;
+      try {
+        if (window.benchAutosave && localStorage.getItem(window.benchAutosave.keyFor(ta)) !== null) return;
+      } catch (_) {}
+      ta.value = SKELETON;
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    if (document.readyState === "complete") seed();
+    else window.addEventListener("load", seed, { once: true });
+  })();
+
+  // Tab-to-indent inside the code textarea. 4 spaces. CodeMirror, when
+  // active, takes over key handling itself, so we register this only
+  // while the textarea is the active editor.
+  document.getElementById("code").addEventListener("keydown", function(e){
+    var mount = document.getElementById("cm-mount");
+    if (mount && mount.dataset.active === "1") return;
+    if (e.key === "Tab") {
+      e.preventDefault();
+      var t = e.target;
+      var s = t.selectionStart, en = t.selectionEnd;
+      t.value = t.value.substring(0, s) + "    " + t.value.substring(en);
+      t.selectionStart = t.selectionEnd = s + 4;
+    }
+  });
+</script>
+
+<script>
+  // Phase-aware hint ladder. Each .hint-trigger button posts to
+  // /hint/<slug> with the current phase notes (or code for Implement)
+  // and a per-phase count of hints already shown. The server returns
+  // a rendered HTML fragment that we drop into the matching slot. On
+  // every successful request we increment the count and mirror the
+  // full counts dict into #hints_used_json so /submit sees it.
+  (function(){
+    var counts = {};            // {plan: 2, implement: 1, ...}
+    var priorHints = {};        // {plan: ["text of hint 1", "text of hint 2"], ...}
+    var hiddenField = document.getElementById("hints_used_json");
+    var triggers = document.querySelectorAll(".hint-trigger");
+    var supportsPointerEvents = typeof window.PointerEvent === "function";
+
+    function syncHidden() {
+      try { hiddenField.value = JSON.stringify(counts); } catch(_) {}
+    }
+
+    function setStatus(phase, msg, isError) {
+      var el = document.querySelector('[data-hint-status="' + phase + '"]');
+      if (!el) return;
+      el.textContent = msg || "";
+      el.classList.toggle("hint-status--error", !!isError);
+    }
+
+    function disableIfExhausted(btn, phase) {
+      // After tier 3 we hide the button so the UI doesn't suggest
+      // an infinite ladder. The fallback "you're at the end" message
+      // has already been rendered into the slot.
+      if (counts[phase] >= 3) {
+        btn.disabled = true;
+        btn.textContent = "At end of ladder";
+      } else {
+        var nextTier = (counts[phase] || 0) + 1;
+        btn.textContent = "Stuck? Get a hint (tier " + nextTier + "/3)";
+      }
+    }
+
+    function appendHint(phase, html) {
+      // Each phase shows the *ladder* now (not just the latest hint),
+      // so the user can see the escalation. We append to the slot,
+      // not replace it. Each new hint stacks under the previous.
+      var slot = document.querySelector('[data-hint-slot="' + phase + '"]');
+      if (!slot) return;
+      var wrap = document.createElement("div");
+      wrap.innerHTML = html;
+      while (wrap.firstChild) slot.appendChild(wrap.firstChild);
+      // Extract the hint body text so we can send it back on the
+      // next call as `prior_hints`. The server-rendered fragment has
+      // the body in `.hint__body`.
+      var bodies = slot.querySelectorAll(".hint__body");
+      var lastBody = bodies[bodies.length - 1];
+      if (lastBody) {
+        priorHints[phase] = priorHints[phase] || [];
+        priorHints[phase].push(lastBody.textContent.trim());
+      }
+    }
+
+    function requestHint(btn, phase, slug, notesId, codeId) {
+      if (btn.disabled) return;
+
+        var current_notes = notesId
+          ? (document.getElementById(notesId) || {}).value || ""
+          : "";
+        var code = codeId
+          ? (document.getElementById(codeId) || {}).value || ""
+          : "";
+        var count_so_far = counts[phase] || 0;
+        var body = new URLSearchParams({
+          phase: phase,
+          count_so_far: String(count_so_far),
+          current_notes: current_notes,
+          code: code,
+          // Send prior hint texts so Claude can avoid repeating
+          // itself. The server escalates the system prompt around
+          // these to enforce tier progression.
+          prior_hints_json: JSON.stringify(priorHints[phase] || []),
+        });
+        btn.disabled = true;
+        setStatus(phase, "thinking…", false);
+        fetch("/hint/" + encodeURIComponent(slug), {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: body,
+        }).then(function(r){
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        }).then(function(html){
+          appendHint(phase, html);
+          counts[phase] = count_so_far + 1;
+          syncHidden();
+          setStatus(phase, "", false);
+          btn.disabled = false;
+          disableIfExhausted(btn, phase);
+        }).catch(function(err){
+          btn.disabled = false;
+          setStatus(phase, "couldn't fetch hint (" + err.message + ")", true);
+        });
+    }
+
+    triggers.forEach(function(btn){
+      var phase = btn.dataset.hintPhase;
+      var slug = btn.dataset.hintSlug;
+      var notesId = btn.dataset.hintNotesId;
+      var codeId = btn.dataset.hintCodeId;
+      // Initialize the label so the user sees the next tier number.
+      disableIfExhausted(btn, phase);
+
+      if (supportsPointerEvents) {
+        btn.addEventListener("pointerdown", function (evt) {
+          if (evt.button !== 0) return;
+          requestHint(btn, phase, slug, notesId, codeId);
+        });
+      }
+
+      btn.addEventListener("click", function (evt) {
+        // Pointer-capable browsers take the pointerdown path so the
+        // first activation cannot be lost to blur/reflow between down/up.
+        // Keep click for keyboard activation and legacy browsers.
+        if (supportsPointerEvents && evt.detail > 0) return;
+        requestHint(btn, phase, slug, notesId, codeId);
+      });
+    });
+  })();
+</script>
+
+{# FRONTEND-1e: the esm.sh CodeMirror script moved into the
+   compose-editor island (bundled deps — works offline/self-host). #}
+
+{% if interview_mode %}
+<script>
+  // Interview-mode v1 (migration 014) — phase-budgeted countdown with
+  // soft warning per phase + hard cutoff at session zero.
+  //
+  // The session-total countdown lives in the interview-banner timer
+  // (top-right). It fires the existing 50/20/10% banners as a coarse
+  // guide.
+  //
+  // Per-phase soft warning: when the active phase elapsed reaches 80%
+  // of its budget, a corner toast fires once. Active phase comes from
+  // the existing EM phase tracker (see the script below) via the
+  // window.__interviewActivePhase hook — set whenever the operator
+  // tabs into a new phase's textarea.
+  //
+  // Hard cutoff: when remaining hits 0, the form locks, an overlay
+  // takes over, the cutoff_bool hidden field flips to "1", and after
+  // a 3s grace window so the operator sees what happened, the form
+  // auto-submits whatever code + notes were captured. The review LLM
+  // grades against the partial work.
+  (function(){
+    var TOTAL = {{ problem.time_bucket }} * 60;
+    var BUDGETS = {{ problem.phase_budgets | tojson }};
+    var SOFT = 0.80;
+    var remaining = TOTAL;
+    var fired = { half: false, eighty: false, ninety: false, done: false };
+    var phaseSoftFired = {};   // phase → bool
+    var el = document.getElementById("interview-timer");
+    var head = document.querySelector(".problem__head");
+
+    function fmt(s){
+      var sign = s < 0 ? "-" : "";
+      s = Math.abs(s);
+      var m = Math.floor(s / 60), ss = s % 60;
+      return sign + m + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+    function flash(msg, tier){
+      var b = document.createElement("div");
+      b.className = "interview-alert interview-alert--" + tier;
+      b.textContent = msg;
+      head.appendChild(b);
+    }
+    function phaseToast(phase, budget){
+      if (phaseSoftFired[phase]) return;
+      phaseSoftFired[phase] = true;
+      var t = document.createElement("div");
+      t.className = "phase-soft-warn";
+      t.setAttribute("role", "status");
+      t.setAttribute("aria-live", "polite");
+      var prettyPhase = phase.charAt(0).toUpperCase() + phase.slice(1);
+      var secsLeft = Math.max(0, Math.round(budget * 0.20));
+      t.textContent = prettyPhase + " — " + secsLeft + "s left, wrap up";
+      document.body.appendChild(t);
+      // Auto-dismiss after 4s so it doesn't haunt the page.
+      setTimeout(function(){ t.remove(); }, 4000);
+    }
+    function hardCutoff(){
+      if (fired.done) return;
+      fired.done = true;
+      if (el) el.classList.add("interview-banner__timer--over");
+      flash("Time's up. Submitting your work for review in 3s…", "danger");
+
+      // Inert blocks editing without dropping successful controls from POST.
+      // Disabled controls would silently omit code and notes from serialization.
+      var form = document.getElementById("solve-form");
+      if (form) {
+        form.inert = true;
+        form.dataset.cutoffLocked = "1";
+        form.querySelectorAll("textarea").forEach(function(field){ field.readOnly = true; });
+      }
+      // Show the cutoff overlay (CSS-styled; see main.css).
+      var overlay = document.createElement("div");
+      overlay.className = "interview-cutoff-overlay";
+      overlay.setAttribute("role", "alertdialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.innerHTML =
+        '<div class="interview-cutoff-overlay__card">' +
+        '  <p class="interview-cutoff-overlay__eyebrow">time\'s up</p>' +
+        '  <h2 class="interview-cutoff-overlay__title">Session ended</h2>' +
+        '  <p class="interview-cutoff-overlay__body">' +
+        '    Submitting whatever you had at the cutoff so the review LLM' +
+        '    can grade against partial work. A reflection prompt will' +
+        '    open after the review lands.' +
+        '  </p>' +
+        '  <p class="interview-cutoff-overlay__countdown" id="cutoff-countdown">3</p>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      // Flip the hidden cutoff flag.
+      var cutoffField = document.getElementById("cutoff_bool");
+      if (cutoffField) cutoffField.value = "1";
+
+      if (!form) return;
+      form.dispatchEvent(new CustomEvent("bench:freeze"));
+      var snapshot = new FormData(form);
+      var confirmed = false;
+      // Retry sends the same cutoff snapshot even if a late async widget
+      // changes a field after time expired.
+      form.addEventListener("htmx:configRequest", function(event) {
+        // Preserve HTMX's request object while removing fields introduced
+        // after cutoff, such as a late checkbox/widget response.
+        Object.keys(event.detail.parameters).forEach(function(name){ delete event.detail.parameters[name]; });
+        snapshot.forEach(function(value, name){ event.detail.parameters[name] = value; });
+      });
+      function submitSnapshot() {
+        var retry = overlay.querySelector("[data-cutoff-retry]");
+        if (retry) retry.disabled = true;
+        if (window.htmx) window.htmx.trigger(form, "submit");
+        else form.requestSubmit();
+      }
+      function offerRetry() {
+        if (confirmed) return;
+        overlay.setAttribute("aria-modal", "false");
+        overlay.setAttribute("role", "region");
+        overlay.setAttribute("aria-label", "Timed submission recovery");
+        overlay.className = "result";
+        overlay.replaceChildren();
+        var message = document.createElement("p");
+        message.setAttribute("role", "status");
+        message.textContent = "Saving was not confirmed. Your cutoff work is kept below. Retry, or copy it before signing in again.";
+        var retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "bordered-button";
+        retry.dataset.cutoffRetry = "";
+        retry.textContent = "Retry saving cutoff work";
+        retry.addEventListener("click", submitSnapshot);
+        var copy = document.createElement("pre");
+        copy.dataset.cutoffCopy = "";
+        var parts = [];
+        snapshot.forEach(function(value, name){ parts.push(name + ":\n" + value); });
+        copy.textContent = parts.join("\n\n");
+        overlay.append(message, retry, copy);
+        form.after(overlay);
+        retry.focus();
+      }
+      form.addEventListener("autosave:confirmed", function(event){
+        if (event.detail.cutoff !== true) return;
+        confirmed = true;
+        overlay.remove();
+      });
+      ["htmx:sendError", "htmx:responseError", "htmx:timeout"].forEach(function(name) {
+        form.addEventListener(name, offerRetry);
+      });
+      form.addEventListener("htmx:afterRequest", function(){ setTimeout(offerRetry, 0); });
+      // Allow the operator to read the cutoff notice before sending.
+      var n = 3;
+      var counter = document.getElementById("cutoff-countdown");
+      var iv = setInterval(function(){
+        n -= 1;
+        if (counter) counter.textContent = String(Math.max(0, n));
+        if (n <= 0) {
+          clearInterval(iv);
+          submitSnapshot();
+        }
+      }, 1000);
+    }
+
+    setInterval(function(){
+      remaining -= 1;
+      if (el) el.textContent = fmt(remaining);
+      var elapsed = TOTAL - remaining;
+      var pct = TOTAL > 0 ? elapsed / TOTAL : 0;
+      if (!fired.half && pct >= 0.50) { fired.half = true; flash("Halfway — should be in Plan or Implement by now.", "soft"); }
+      if (!fired.eighty && pct >= 0.80) { fired.eighty = true; flash("20% remaining — wrap Implement, sketch Verify.", "warn"); }
+      if (!fired.ninety && pct >= 0.90) { fired.ninety = true; flash("10% remaining — submit something.", "warn"); }
+      if (!fired.done && remaining <= 0) {
+        hardCutoff();
+      }
+
+      // Per-phase soft warning. Reads from the EM phase tracker
+      // (other script) via shared window state.
+      var phase = window.__interviewActivePhase;
+      if (phase && BUDGETS && BUDGETS[phase]) {
+        var phaseElapsed = (window.__interviewPhaseElapsed || {})[phase] || 0;
+        if (phaseElapsed >= BUDGETS[phase] * SOFT) {
+          phaseToast(phase, BUDGETS[phase]);
+        }
+      }
+    }, 1000);
+  })();
+</script>
+{% endif %}
+
+{% if em_phases %}
+<script>
+  // Engineering Method scaffolding: per-phase timer + soft Plan gate.
+  // Interview-mode v1: also exposes `window.__interviewActivePhase` +
+  // `window.__interviewPhaseElapsed` so the session-countdown script
+  // above can fire the per-phase soft-warning toast.
+  (function(){
+    var PHASES = {{ em_phases | tojson }};
+    var PLAN_GATE_CHARS = {{ config.em.plan_gate_chars }};
+    var elapsed = {};
+    PHASES.forEach(function(p){ elapsed[p] = 0; });
+    var activePhase = PHASES[0];
+    var lastTick = Date.now();
+    window.__interviewActivePhase = activePhase;
+    window.__interviewPhaseElapsed = elapsed;
+
+    function fmt(s){
+      var m = Math.floor(s / 60), ss = s % 60;
+      return m + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+    function paintTimers(){
+      document.querySelectorAll("[data-timer]").forEach(function(el){
+        var p = el.getAttribute("data-timer");
+        el.textContent = fmt(elapsed[p] || 0);
+      });
+    }
+    function tick(){
+      var now = Date.now();
+      var delta = Math.floor((now - lastTick) / 1000);
+      if (delta > 0 && activePhase) {
+        elapsed[activePhase] = (elapsed[activePhase] || 0) + delta;
+        lastTick = now - ((now - lastTick) % 1000);
+        paintTimers();
+      }
+    }
+    setInterval(tick, 1000);
+
+    // Active-phase tracking: whichever phase contains the focused element.
+    document.querySelectorAll(".phase").forEach(function(section){
+      var phase = section.getAttribute("data-phase");
+      section.querySelectorAll("textarea, input").forEach(function(el){
+        el.addEventListener("focus", function(){
+          tick();  // flush accrued time on old phase
+          activePhase = phase;
+          window.__interviewActivePhase = activePhase;
+          lastTick = Date.now();
+        });
+      });
+    });
+
+    // Soft Plan gate.
+    var planNotes = document.getElementById("plan-notes");
+    var gate = document.getElementById("plan-gate");
+    var code = document.getElementById("code");
+    var unlocked = false;
+    function syncGate(){
+      if (unlocked || PLAN_GATE_CHARS === 0) return;
+      var len = planNotes ? planNotes.value.trim().length : 0;
+      var pass = len >= PLAN_GATE_CHARS;
+      if (gate) gate.style.display = pass ? "none" : "flex";
+      code.readOnly = !pass;
+      code.classList.toggle("code--locked", !pass);
+    }
+    if (planNotes) {
+      planNotes.addEventListener("input", syncGate);
+    }
+    var bypass = document.getElementById("plan-gate-bypass");
+    if (bypass) {
+      bypass.addEventListener("click", function(){
+        unlocked = true;
+        if (gate) gate.style.display = "none";
+        code.readOnly = false;
+        code.classList.remove("code--locked");
+        code.focus();
+      });
+    }
+    syncGate();
+
+    // On submit, flush timers and serialize.
+    var form = document.getElementById("solve-form");
+    form.addEventListener("bench:freeze", flushPhaseTimers);
+    form.addEventListener("submit", flushPhaseTimers);
+    function flushPhaseTimers(){
+      tick();
+      document.getElementById("time_per_phase_json").value = JSON.stringify(elapsed);
+    }
+  })();
+</script>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Mira — practice coach{% endblock %}
+{% block body %}
+<article class="page" data-mira-draft-user="{{ draft_user }}" data-mira-draft-context='{{ context | tojson }}'{% if session %} data-mira-session="{{ session.id }}"{% endif %}>
+  <header class="page__head">
+    <p class="page__meta"><a href="{{ work.url }}">← Return to {{ work.title }}</a></p>
+    <h1 class="page__title">Mira · practice coaching</h1>
+    <p class="muted" style="display:inline-block;padding:.25em .6em;border:1px solid currentColor;border-radius:.25em;font-weight:600;">Coming soon</p>
+    <p>MIRA coaching is not yet available. Check back later.</p>
+  </header>
+  <script type="application/json" data-mira-confirmed-drafts>{{ confirmed_drafts | tojson }}</script>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  {% if draft and not stage %}
+    <section class="page__section"><label for="mira-unsent-note">Your unsent note</label>
+      <textarea id="mira-unsent-note" rows="6" readonly>{{ draft }}</textarea>
+      <p class="muted">This note has not been saved. Keep a copy before starting a new session.</p></section>
+  {% endif %}
+  {% if legacy %}
+    <section class="page__section"><h2 class="section-label">Saved conversation · read-only</h2>
+      <p>This older conversation used open-ended replies. New sessions use practice coaching.</p>
+      <a class="primary-link" href="/mira">Start practice coaching →</a>
+      {% for turn in turns %}<p><strong>{{ 'You' if turn.role == 'user' else 'Mira' }}</strong></p><div>{{ turn.content | markdown }}</div>{% endfor %}
+    </section>
+  {% elif stage %}
+    <section class="page__section" aria-labelledby="coach-step">
+      <p class="muted">Step {{ stage_number }} of 4 · {{ work.title }}</p>
+      <h2 id="coach-step">{{ stage_labels[stage] }}</h2>
+      <p>{{ prompt }}</p>
+      <p class="muted">Take a pause before typing. Being unsure is a useful starting point.</p>
+      <form method="post" action="/mira/coach" data-mira-draft-stage="{{ stage }}">
+        <input type="hidden" name="session_id" value="{{ session.id if session else pending_session_id }}">
+        <input type="hidden" name="request_token" value="{{ request_token }}">
+        <input type="hidden" name="force_new" value="{{ '1' if force_new else '0' }}">
+        <input type="hidden" name="stage" value="{{ stage }}">
+        <input type="hidden" name="track" value="{{ submitted_context.track if submitted_context is not none else (context.slug if context.kind == 'track' else '') }}">
+        <input type="hidden" name="section" value="{{ submitted_context.section if submitted_context is not none else (context.section if context.kind == 'track' else -1) }}">
+        <input type="hidden" name="problem" value="{{ submitted_context.problem if submitted_context is not none else (context.slug if context.kind == 'problem' else '') }}">
+        <div class="form-field"><label for="mira-message">Your thinking</label>
+          <textarea id="mira-message" name="message" rows="6" maxlength="6000" required>{{ draft }}</textarea></div>
+        <p data-mira-draft-status role="status" class="muted"></p>
+        <div class="form-actions"><button type="submit" class="primary">{% if stage == 'reflect' %}Save reflection{% else %}Save and continue{% endif %}</button>
+          <a href="{{ work.url }}">Return to practice</a></div>
+      </form>
+    </section>
+  {% else %}
+    <section class="page__section" role="status"><h2>Reflection saved</h2>
+      <p>Your next step is yours to test. Coaching has not marked the exercise complete.</p>
+      <a class="primary-link" href="{{ work.url }}">Return to practice →</a></section>
+  {% endif %}
+  {% if turns and not legacy %}
+    <details class="page__section"{% if not stage %} open{% endif %}><summary>Your saved thinking</summary>
+      {% for turn in turns if turn.role == 'user' %}
+        <h3>{{ stage_labels.get((turn.provider_used or '')[6:], 'Your note') }}</h3>
+        <div class="mira-msg__body mira-msg__body--plain">{{ turn.content }}</div>
+      {% endfor %}
+    </details>
+  {% endif %}
+  {% if recent_sessions %}
+    <details class="page__section"><summary>Saved conversations</summary>
+      <p><a href="/mira?new=1{% if context.kind == 'track' %}&amp;track={{ context.slug }}&amp;section={{ context.section }}{% elif context.kind == 'problem' %}&amp;problem={{ context.slug }}{% endif %}">Start another coaching session</a></p><ul>
+      {% for previous in recent_sessions %}<li><a href="/mira/session/{{ previous.id }}">{{ previous.title or 'Conversation' }}{% if previous.started_at %} · {{ previous.started_at.strftime('%b %d, %H:%M') }}{% endif %}</a></li>{% endfor %}
+    </ul></details>
+  {% endif %}
+  <details class="page__section"><summary>Research workspace</summary>
+    <p class="muted">Saved research materials are separate from this coaching session.</p>
+    <a href="/mira/agenda">Agenda</a> · <a href="/mira/memory">Memory</a> · <a href="/mira/kb">Knowledge base</a> · <a href="/mira/evals">Evaluation ideas</a>
+  </details>
+</article>
+<script src="/static/js/mira-coach.js?v={{ static_hash('js/mira-coach.js') }}" defer></script>
+{% endblock %}

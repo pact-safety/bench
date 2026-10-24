@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Add external content — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--content-new">
+  <header class="page__head">
+    <h1 class="page__title">Add external content</h1>
+    <p class="page__meta">
+      DeepLearning.ai videos, BlueDot readings, Coursera lectures —
+      anything you're consuming outside the platform. Pasted items
+      enter the daily rotation with the same axis-aligned scoring as
+      authored content, ratings, reflections, and crosslinks.
+    </p>
+  </header>
+
+  {% if error %}
+    <section class="page__section">
+      <p class="field-error" role="alert">
+        {% if error == 'title' %}A title is required.
+        {% elif error == 'kind' %}Pick a kind (reading / video / podcast / exercise).
+        {% elif error == 'url' %}URL must start with http:// or https:// — or leave it blank.
+        {% else %}Couldn't save — try again.
+        {% endif %}
+      </p>
+    </section>
+  {% endif %}
+
+  <form method="post" action="/library/add" class="ext-form">
+    <label class="ext-form__field">
+      <span>Title <em class="muted">— what's this called?</em></span>
+      <input type="text" name="title" maxlength="200" required placeholder="e.g. Backpropagation — DeepLearning.ai Course 1, Week 3">
+    </label>
+
+    <div class="ext-form__row">
+      <label class="ext-form__field">
+        <span>Kind</span>
+        <select name="kind" required>
+          <option value="">— pick one —</option>
+          <option value="reading">reading</option>
+          <option value="video">video</option>
+          <option value="podcast">podcast</option>
+          <option value="exercise">exercise</option>
+        </select>
+      </label>
+
+      <label class="ext-form__field">
+        <span>Duration <em class="muted">(min, optional)</em></span>
+        <input type="number" name="duration_min" min="1" max="600" placeholder="e.g. 25">
+      </label>
+    </div>
+
+    <div class="ext-form__row">
+      <label class="ext-form__field">
+        <span>Source</span>
+        <select name="source">
+          <option value="">— pick or leave blank —</option>
+          {% for s in known_sources %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          <option value="Other">Other (specify below)</option>
+        </select>
+      </label>
+      <label class="ext-form__field">
+        <span>Other source <em class="muted">— only if "Other" picked above</em></span>
+        <input type="text" name="source_other" maxlength="80" placeholder="e.g. Karpathy YouTube">
+      </label>
+    </div>
+
+    <label class="ext-form__field ext-form__field--url">
+      <span>Link <em class="muted">(optional)</em></span>
+      <div class="ext-form__url-row">
+        <input type="url" name="url" id="ext-url" maxlength="500" placeholder="https://...">
+        <button type="button" class="ext-form__parse-btn" id="ext-parse-btn">
+          Parse with Claude →
+        </button>
+      </div>
+      <span class="ext-form__parse-status muted" id="ext-parse-status" aria-live="polite"></span>
+    </label>
+
+    <fieldset class="ext-form__field ext-form__axes">
+      <legend>Axes this touches <span class="muted">(pick all that apply — feeds the scheduler so this item shows up when you're weak on these)</span></legend>
+      <div class="ext-form__axis-grid">
+        {% for a in axes %}
+          <label class="ext-form__axis-check">
+            <input type="checkbox" class="js-axis-pick" value="{{ a }}">
+            <span>{{ axis_labels.get(a, a) }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="axes_csv" id="axes_csv" value="">
+    </fieldset>
+
+    <label class="ext-form__field">
+      <span>Notes <em class="muted">(why you queued this, what to look for, what it pairs with — markdown OK)</em></span>
+      <textarea name="notes_md" rows="6" data-autosave data-voice-note data-voice-note-label="Dictate notes"></textarea>
+      <span class="autosave-status muted" data-autosave-status="notes_md" aria-live="polite"></span>
+    </label>
+
+    <div class="ext-form__actions">
+      <button type="submit" class="primary">Save + open</button>
+      <a class="muted" href="/library">cancel</a>
+    </div>
+  </form>
+</article>
+
+<script>
+  // Roll up the checked axis checkboxes into a single hidden CSV field
+  // on submit. Single-purpose; no library dep.
+  (function () {
+    var form = document.querySelector(".ext-form");
+    if (!form) return;
+    form.addEventListener("submit", function () {
+      var checks = form.querySelectorAll(".js-axis-pick:checked");
+      var vals = [];
+      checks.forEach(function (c) { vals.push(c.value); });
+      document.getElementById("axes_csv").value = vals.join(",");
+    });
+  })();
+
+  // Parse-with-Claude: POST the URL to /library/add/parse-url, get
+  // back {title, source, axes[], summary_md}, fill the form. Best-effort:
+  // any failure surfaces in the status line and leaves the form alone.
+  (function () {
+    var btn = document.getElementById("ext-parse-btn");
+    var urlInput = document.getElementById("ext-url");
+    var statusBox = document.getElementById("ext-parse-status");
+    if (!btn || !urlInput || !statusBox) return;
+
+    btn.addEventListener("click", async function () {
+      var u = (urlInput.value || "").trim();
+      if (!u) { statusBox.textContent = "Paste a URL first."; return; }
+      btn.disabled = true;
+      statusBox.textContent = "Fetching + parsing…";
+      try {
+        var fd = new FormData();
+        fd.append("url", u);
+        var r = await fetch("/library/add/parse-url", { method: "POST", body: fd });
+        var data = await r.json();
+        if (!data.ok) {
+          statusBox.textContent =
+            data.reason === "fetch-failed" ? "Couldn't fetch that URL — fill in manually." :
+            data.reason === "url-format"   ? "URL must start with http:// or https://" :
+            "Parse failed — fill in manually.";
+          return;
+        }
+        // Title — only set if currently empty so we don't clobber edits.
+        var titleEl = document.querySelector("input[name='title']");
+        if (titleEl && !titleEl.value && data.title) titleEl.value = data.title;
+        // Source — same. Map onto the dropdown if it matches, else into "other".
+        var sourceSel = document.querySelector("select[name='source']");
+        var sourceOther = document.querySelector("input[name='source_other']");
+        if (data.source) {
+          var matched = false;
+          if (sourceSel) {
+            for (var i = 0; i < sourceSel.options.length; i++) {
+              if (sourceSel.options[i].value.toLowerCase() === data.source.toLowerCase()) {
+                sourceSel.value = sourceSel.options[i].value;
+                matched = true;
+                break;
+              }
+            }
+          }
+          if (!matched && sourceOther && !sourceOther.value) {
+            if (sourceSel) sourceSel.value = "Other";
+            sourceOther.value = data.source;
+          }
+        }
+        // Axes — check matching boxes (additive, won't uncheck existing).
+        if (Array.isArray(data.axes)) {
+          data.axes.forEach(function (axis) {
+            var cb = document.querySelector(".js-axis-pick[value='" + axis + "']");
+            if (cb) cb.checked = true;
+          });
+        }
+        // Summary — prepend to the notes field as a starter, only if
+        // notes is empty. The user's own notes belong above; this is a
+        // springboard, not a replacement.
+        var notes = document.querySelector("textarea[name='notes_md']");
+        if (notes && !notes.value && data.summary_md) {
+          notes.value = "_Claude summary (edit or replace):_\n\n" + data.summary_md;
+        }
+        statusBox.textContent = data.degraded
+          ? "Parsed with degraded fallback — Claude unavailable."
+          : "Parsed. Edit anything before saving.";
+      } catch (e) {
+        statusBox.textContent = "Network error — fill in manually.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>
+
+{% endblock %}

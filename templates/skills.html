@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Assess your skills — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--skills">
+  <header class="page__head page__head--skills">
+    <div>
+      <h1 class="page__title">Where you stand</h1>
+      {% if latest_run %}
+        <p class="page__meta">
+          Your skill profile across ten axes — self-assessment from {{ latest_run.completed_at.strftime("%Y-%m-%d") }}.
+          Pentagon below shows the shape of your strengths; per-axis bars show the bar to clear.
+        </p>
+      {% else %}
+        <p class="page__meta">No bearings yet — <a class="action-link" href="/onboarding">take the initial assessment</a> so the scheduler has something to work with.</p>
+      {% endif %}
+    </div>
+    {% if latest_run %}
+      <div class="page__head-actions">
+        <a class="bordered-button" href="/readiness">Readiness for active JD →</a>
+        <form method="post" action="/onboarding/start" style="display: inline;">
+          <button type="submit" class="bordered-button">Retake assessment →</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+
+  {% if latest_run %}
+    <section class="page__section page__section--centered">
+      {% include "_skill_chart.html" %}
+    </section>
+
+    <section class="page__section">
+      <h2 class="section-label">Per-axis breakdown</h2>
+      <div class="axis-grid">
+        {% for axis, label in axis_labels.items() %}
+          {% set v = skill_scores.get(axis, 0.0) %}
+          {% set pct = (v * 100) | round | int %}
+          {% if v >= 0.66 %}{% set tier = "strong" %}{% elif v >= 0.33 %}{% set tier = "mid" %}{% else %}{% set tier = "weak" %}{% endif %}
+          <div class="axis-row axis-row--{{ tier }}">
+            <span class="axis-row__name">{{ label }}</span>
+            <span class="axis-row__bar"><span class="axis-row__fill" style="width: {{ pct }}%;"></span></span>
+            <span class="axis-row__pct">{{ pct }}%</span>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if suggestion %}
+      <section class="page__section">
+        <h2 class="section-label">Suggested focus</h2>
+        <p class="muted">Weakest axis: <strong>{{ suggestion.axis_label }}</strong></p>
+        <a class="problem-card problem-card--inline" href="/problem/{{ suggestion.problem.slug }}">
+          <div class="problem-card__head">
+            <span class="badge badge--{{ suggestion.problem.problem_type }}">{{ suggestion.problem.problem_type.replace('_',' ') }}</span>
+            <span class="badge badge--time">{{ suggestion.problem.time_bucket }} min</span>
+            <span class="badge badge--diff">{{ suggestion.problem.difficulty }}</span>
+          </div>
+          <h3 class="problem-card__title">{{ suggestion.problem.title }}</h3>
+        </a>
+      </section>
+    {% endif %}
+  {% endif %}
+
+</article>
+
+{% endblock %}

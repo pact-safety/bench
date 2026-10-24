@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Library — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--library">
+  <header class="page__head">
+    <h1 class="page__title">Library</h1>
+    <p class="page__meta">{{ all_content | length }} learning items · {{ cores | length }} problems · {{ warmups | length }} warmups. Open an item to learn, reflect, and rate how useful it was.</p>
+    <p class="page__cta">
+      <a class="btn btn--ghost" href="/library/add">+ Add external content</a>
+      <span class="muted">— paste a DeepLearning.ai video, BlueDot reading, anything you're consuming outside the platform</span>
+    </p>
+  </header>
+
+{% if track_materials %}
+<section class="page__section">
+  <p>Active track: <a href="/tracks/{{ track_materials.track.slug }}">{{ track_materials.track.title }}</a> · <a href="/library?track={{ track_materials.track.slug }}">Browse its library items</a></p>
+</section>
+{% endif %}
+
+{% import "_bubbles.html" as b with context %}
+  {{ b.slot('filters') }}
+  <section class="page__section page__section--filters">
+    <form class="filters" method="get" action="/library">
+      <div class="form-field">
+        <label for="library-track">Track</label>
+        <select id="library-track" name="track">
+          <option value="">All tracks and general content</option>
+          {% for t in available_tracks %}<option value="{{ t.slug }}"{% if active_track_filter == t.slug %} selected{% endif %}>{{ t.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="library-type">Learning type</label>
+        <select id="library-type" name="type">
+          <option value="">All types</option>
+          {% for t in all_types %}<option value="{{ t }}"{% if active_type == t %} selected{% endif %}>{{ t.replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="library-tag">Topic</label>
+        <select id="library-tag" name="tag">
+          <option value="">All topics</option>
+          {% for t in all_tags %}<option value="{{ t }}"{% if active_tag == t %} selected{% endif %}>{{ t.replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="bordered-button">Apply filters</button>
+      <a href="/library">Clear filters</a>
+    </form>
+  </section>
+
+  {% if favorites %}
+    <section class="page__section">
+      <h2 class="section-label">★ Favorites</h2>
+      <ul class="library-list">
+        {% for c in favorites %}
+          <li class="library-row">
+            <a class="library-row__main" href="/content/{{ c.slug }}">
+              <span class="library-row__title">{{ c.title }}</span>
+              <div class="library-row__meta">
+                <span class="badge">{{ c.kind }}</span>
+                {% if track_content_states.get(c.id) %}<span class="badge">{{ track_content_states[c.id].track.title }}</span>{% if not track_content_states[c.id].unlocked %}<span class="badge">Locked · prerequisites</span>{% endif %}{% endif %}
+                {% if c.duration_min %}<span class="badge badge--time">{{ c.duration_min }} min</span>{% endif %}
+                {% if content_progress.get(c.id) and content_progress[c.id].rating_1_to_5 %}
+                  <span class="badge">{{ '★' * content_progress[c.id].rating_1_to_5 }}</span>
+                {% endif %}
+                {% for a in c.axes %}<span class="tag">{{ a.replace('_',' ') }}</span>{% endfor %}
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if all_content %}
+    <section class="page__section">
+      <h2 class="section-label">Learning items · {{ all_content | length }}</h2>
+      <ul class="library-list">
+        {% for c in all_content %}
+          {% set pr = content_progress.get(c.id) %}
+          {% set context = track_content_states.get(c.id) %}
+          <li class="library-row {% if pr and pr.status == 'completed' %}library-row--attempted{% endif %}">
+            <a class="library-row__main" href="/content/{{ c.slug }}">
+              <span class="library-row__title">
+                {% if pr and pr.favorited %}<span class="library-row__star">★</span>{% endif %}
+                {{ c.title }}
+              </span>
+              <div class="library-row__meta">
+                <span class="badge">{{ c.kind }}</span>
+                {% if track_content_states.get(c.id) %}<span class="badge">{{ track_content_states[c.id].track.title }}</span>{% if not track_content_states[c.id].unlocked %}<span class="badge">Locked · prerequisites</span>{% endif %}{% endif %}
+                {% if c.source_kind == 'user' %}
+                  <span class="badge badge--external" title="External content you added — {{ c.source or 'no source set' }}">external{% if c.source %} · {{ c.source }}{% endif %}</span>
+                {% endif %}
+                {% if c.duration_min %}<span class="badge badge--time">{{ c.duration_min }} min</span>{% endif %}
+                {% if pr and pr.rating_1_to_5 %}<span class="badge">{{ '★' * pr.rating_1_to_5 }}</span>{% endif %}
+                {% for a in c.axes %}<span class="tag">{{ a.replace('_',' ') }}</span>{% endfor %}
+              </div>
+            </a>
+            {% if pr and pr.status == 'completed' %}<span class="library-row__status">done</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if not all_content and not cores and not warmups %}<p role="status">No items match these filters. <a href="/library">Show all library items</a>.</p>{% endif %}
+  {% if cores %}<section class="page__section">
+    <h2 class="section-label">Core problems</h2>
+    <ul class="library-list">
+      {% for p in cores %}
+        <li class="library-row {% if p.id in attempted_ids %}library-row--attempted{% endif %}">
+          <a class="library-row__main" href="/problem/{{ p.slug }}">
+            <span class="library-row__title">{{ p.title }}</span>
+            <div class="library-row__meta">
+              <span class="badge badge--{{ p.problem_type }}">{{ p.problem_type.replace('_',' ') }}</span>
+              <span class="badge badge--time">{{ p.time_bucket }} min</span>
+              <span class="badge badge--diff">{{ p.difficulty }}</span>
+              {% for t in p.domain_tags %}<span class="tag">{{ t }}</span>{% endfor %}
+            </div>
+          </a>
+          {% if p.id in attempted_ids %}
+            <span class="library-row__status">attempted</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% endif %}
+  {% if warmups %}
+    <section class="page__section">
+      <h2 class="section-label">Warmups</h2>
+      <p class="muted">Don't enter the scheduler. <a href="/warmup">Pick a random one</a> instead of choosing.</p>
+      <ul class="library-list">
+        {% for p in warmups %}
+          <li class="library-row {% if p.id in attempted_ids %}library-row--attempted{% endif %}">
+            <a class="library-row__main" href="/problem/{{ p.slug }}?warmup=1">
+              <span class="library-row__title">{{ p.title }}</span>
+              <div class="library-row__meta">
+                <span class="badge badge--time">{{ p.time_bucket }} min</span>
+                {% for t in p.competency_tags %}<span class="tag">{{ t }}</span>{% endfor %}
+              </div>
+            </a>
+            {% if p.id in attempted_ids %}
+              <span class="library-row__status">attempted</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

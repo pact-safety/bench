@@ -1,0 +1,114 @@
+site_name: "Li's Bench — docs"
+site_description: "How I use the bench, feature by feature. Plus architecture + dev notes for future me (and the agents that help)."
+site_url: "https://docs.libearden.dev/"
+repo_url: "https://github.com/pact-safety/bench"
+repo_name: "pact-safety/bench"
+edit_uri: "edit/main/docs/"
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+    - search.share
+  # Dark-only — matches bench + libearden.dev (both dark-only after
+  # the 2026-05-27 visual alignment). No light toggle. Palette base
+  # is `slate`; every meaningful color is overridden by
+  # docs/stylesheets/extra.css to the portfolio token values.
+  palette:
+    scheme: slate
+    primary: black
+    accent: amber
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Welcome: index.md
+  - Using bench:
+      - "How practice works": using/how-practice-works.md
+      - "AI in the bench": using/ai-and-your-work.md
+      - "Your data": using/your-data.md
+      - "Accessibility": using/accessibility.md
+  - How I use it:
+      - "Drilling problems": using/problems.md
+      - "Hints and mentor voices": using/hints-and-voices.md
+      - "Weekly Hamming reflections": using/reflect.md
+      - "Reading + library": using/library.md
+      - "Job descriptions and IAC": using/jds.md
+      - "Readiness scoring": using/readiness.md
+      - "Settings + danger zone": using/settings.md
+  - Architecture:
+      - "Code tour": architecture/code-tour.md
+      - "Data model": architecture/data-model.md
+      - "Services": architecture/services.md
+      - "Templates & frontend": architecture/frontend.md
+      - "Design tokens": architecture/tokens.md
+      - "Tag vocabulary": architecture/tag-vocabulary.md
+      - "Imposter-signal mitigation": architecture/imposter-syndrome.md
+      - "Rest days (Sat + Sun)": architecture/rest-days.md
+      - "Curriculum tracks (ARENA 3.0)": architecture/tracks.md
+      - "Initiatives (cross-surface grouping)": architecture/initiatives.md
+      - "Themes": THEMES.md
+      - "UI style guide": STYLEGUIDE.md
+      - "UI audit (2026-08-10)": UI-AUDIT.md
+  - Development:
+      - "Setup & tests": development/setup.md
+      - "Common tasks": development/common-tasks.md
+      - "Adding a voice / problem / content": development/contributing.md
+      - "Access control & public paths": development/access-control.md
+      - "CI security & dependencies": security/ci-and-deps.md
+  - Roadmap & decisions: roadmap.md
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/pact-safety/bench

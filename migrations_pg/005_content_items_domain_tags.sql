@@ -1,0 +1,34 @@
+-- Add domain_tags to content_items (LIS-284 / GH #2 — tag taxonomy
+-- unification). Pre-migration, content_items only carried `axes` (the
+-- canonical assessment-axis IDs) while problems carried both `axes`
+-- (via `competency_tags`) AND finer-grained `domain_tags` like
+-- `attention`, `softmax`, `layer_norm`. The vocabulary mismatch was
+-- bridged by `app/services/tag_aliases.py` — a curated synonym map
+-- that broadened axis matches to include all of an axis's sub-topics.
+--
+-- The bridge worked but was lossy (any content tagged
+-- `transformer_internals` matched `?tag=attention` even when it was
+-- actually about layer normalization). The unification: give content
+-- items their own `domain_tags` field, populate it via title-keyword
+-- match against the existing alias map (see
+-- scripts/migrate_content_domain_tags.py for the migration audit
+-- trail), then drop the alias map in the same PR.
+--
+-- After this migration:
+--   * /library filter matches directly on `domain_tags ∪ axes` for
+--     both problems and content. No alias bridge.
+--   * Filter precision improves: `?tag=attention` only returns items
+--     that actually carry `attention` as a domain_tag.
+--   * Facet chips become a single namespace (the union of all
+--     domain_tags + axes across the library).
+--
+-- See docs/architecture/tag-vocabulary.md for the design rationale
+-- and the migration mapping for every content item.
+
+-- Match the existing `axes_json` storage convention for content_items:
+-- JSONB array, not Postgres TEXT[]. Keeps the read path uniform for the
+-- repo helpers (jsonb() in _pg.py) and lets us reuse the same upsert
+-- pattern. The library filter walks the array in Python, not SQL, so
+-- we don't need a GIN index for the contains-check.
+ALTER TABLE content_items
+    ADD COLUMN IF NOT EXISTS domain_tags_json JSONB NOT NULL DEFAULT '[]'::jsonb;

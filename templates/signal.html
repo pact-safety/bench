@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}What a selector can see — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+{% import "_bubbles.html" as b with context %}
+
+<article class="page page--signal">
+  <header class="page__head">
+    <h1 class="page__title">Signal</h1>
+    <p class="page__meta">
+      <a class="action-link" href="/readiness">Readiness</a> answers whether you can do
+      the work. This answers the question a selection process actually reads:
+      is there anything a stranger can look at that shows it — and what happened
+      when you applied.
+    </p>
+    <p class="page__meta muted">
+      These criteria come from guidance programs have published, not from
+      guesses about what they secretly want. Meeting them does not produce an
+      acceptance: these rounds are capacity-bound and single-digit-percent.
+      What they do is make work you have already done legible, and separate the
+      strong version of a line on your CV from the weak one.
+    </p>
+  </header>
+
+  {{ b.slot('signal') }}
+
+  <section class="page__section">
+    <h2 class="section-label">Coverage</h2>
+    <p class="page__meta">
+      <span class="badge badge--time">{{ coverage.covered }}/{{ coverage.total }} covered</span>
+      {% if coverage.weak_only %}
+        <span class="tag">{{ coverage.weak_only }} weak-only</span>
+      {% endif %}
+      {% if coverage.empty %}
+        <span class="muted">{{ coverage.empty }} with nothing recorded</span>
+      {% endif %}
+    </p>
+    <p class="muted">
+      Weak-only is the important number. "I've already done that" and "a reviewer
+      can see I did that well" are different claims, and the second is the one
+      being assessed.
+    </p>
+    <nav class="fb-tabs" aria-label="Track filter">
+      {% for t in ["all", "technical", "governance"] %}
+        <a class="fb-tab {% if track_filter == t %}is-active{% endif %}"
+           {% if track_filter == t %}aria-current="page"{% endif %}
+           href="/signal?track={{ t }}">{{ t }}</a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  {% if next_actions %}
+    <section class="page__section">
+      <h2 class="section-label">Worth the next block of hours</h2>
+      <ul class="fb-list">
+        {% for s in next_actions %}
+          <li class="fb-item">
+            <header class="fb-item__head">
+              <a class="mira-card__title" href="/signal/criterion/{{ s.criterion.slug }}">{{ s.criterion.title }}</a>
+              <span class="tag">{{ s.criterion.track }}</span>
+              {% if s.criterion.effort_hours %}
+                <span class="muted">~{{ s.criterion.effort_hours }}h to a strong version</span>
+              {% endif %}
+              {% if s.best_strength == 'weak' %}
+                <span class="tag">you have a weak version</span>
+              {% endif %}
+            </header>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    <h2 class="section-label">All criteria</h2>
+    <ul class="fb-list">
+      {% for s in statuses %}
+        <li class="fb-item">
+          <header class="fb-item__head">
+            <a class="mira-card__title" href="/signal/criterion/{{ s.criterion.slug }}">{{ s.criterion.title }}</a>
+            <span class="tag">{{ s.criterion.track }}</span>
+            {% if s.covered %}
+              <span class="tag">{{ s.best_strength }}</span>
+            {% elif s.best_strength == 'weak' %}
+              <span class="muted">weak only</span>
+            {% else %}
+              <span class="muted">nothing recorded</span>
+            {% endif %}
+            <span class="muted">{{ s.artifacts | length }} artifact{{ '' if s.artifacts | length == 1 else 's' }}</span>
+          </header>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Applications</h2>
+    {% if opp_stats.total %}
+      <p class="page__meta">
+        <span class="badge badge--time">{{ opp_stats.total }} tracked</span>
+        {% if opp_stats.rejected_late %}
+          <span class="tag">{{ opp_stats.rejected_late }} died at interview or decision</span>
+        {% endif %}
+      </p>
+      <p class="muted">
+        Where applications die is the diagnosis. Repeatedly reaching a final
+        interview and stopping there is a different problem from never clearing
+        the first filter, and it points at different work.
+      </p>
+    {% else %}
+      <p class="empty-state">
+        Nothing tracked yet. Log the ones you have already sent — including the
+        rejections. Fourteen rejections is demoralising; fourteen rejections of
+        which six died at final interview is information.
+      </p>
+    {% endif %}
+
+    {% if opportunities %}
+      <ul class="fb-list">
+        {% for o in opportunities %}
+          <li class="fb-item">
+            <header class="fb-item__head">
+              <span class="mira-card__title">
+                {% if o.url %}<a href="{{ o.url }}" target="_blank" rel="noopener">{{ o.org }} — {{ o.title }}</a>
+                {% else %}{{ o.org }} — {{ o.title }}{% endif %}
+              </span>
+              <span class="tag">{{ o.stage }}</span>
+              {% if o.outcome %}<span class="tag">{{ o.outcome }}</span>{% endif %}
+              <span class="muted">{{ o.kind }} · {{ o.location }}{% if o.deadline %} · due {{ o.deadline.strftime('%b %d, %Y') }}{% endif %}</span>
+            </header>
+            {% if o.feedback_md %}
+              <p class="fb-item__body">{{ o.feedback_md }}</p>
+            {% endif %}
+            <details class="mira-add">
+              <summary>Update stage</summary>
+              <form method="post" action="/signal/opportunity/{{ o.id }}/advance">
+                <div class="form-field">
+                  <label class="form-field__label" for="stage-{{ o.id }}">Stage</label>
+                  <select id="stage-{{ o.id }}" name="stage">
+                    {% for st in stages %}
+                      <option value="{{ st }}" {% if st == o.stage %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-field__label" for="outcome-{{ o.id }}">Outcome <span class="muted">(optional)</span></label>
+                  <input id="outcome-{{ o.id }}" type="text" name="outcome" placeholder="rejected / accepted / withdrawn">
+                </div>
+                <div class="form-field">
+                  <label class="form-field__label" for="fb-{{ o.id }}">Feedback received <span class="muted">(appended, never overwritten)</span></label>
+                  <textarea id="fb-{{ o.id }}" name="feedback_md" rows="3"
+                            placeholder="Paste what they actually said, verbatim."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+              </form>
+            </details>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <details class="mira-add">
+      <summary>+ Track an application</summary>
+      <form method="post" action="/signal/opportunity">
+        <div class="form-field">
+          <label class="form-field__label" for="opp-org">Organisation</label>
+          <input id="opp-org" type="text" name="org" required placeholder="PIBBSS">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-title">Programme</label>
+          <input id="opp-title" type="text" name="title" required placeholder="Summer Fellowship 2027">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-kind">Kind</label>
+          <select id="opp-kind" name="kind">
+            {% for k in kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-location">Location</label>
+          <input id="opp-location" type="text" name="location" placeholder="remote / London / Berkeley">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-url">Link <span class="muted">(optional)</span></label>
+          <input id="opp-url" type="url" name="url" placeholder="https://">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-deadline">Deadline <span class="muted">(YYYY-MM-DD, optional)</span></label>
+          <input id="opp-deadline" type="date" name="deadline">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="opp-stage">Stage</label>
+          <select id="opp-stage" name="stage">
+            {% for st in stages %}<option value="{{ st }}">{{ st }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Track it</button>
+        </div>
+      </form>
+    </details>
+  </section>
+</article>
+
+{% endblock %}

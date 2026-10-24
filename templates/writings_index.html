@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Write and iterate — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--writings">
+  <header class="page__head">
+    <h1 class="page__title">Writing</h1>
+    <p class="page__meta">Short drafts that turn the day's reading + reflections + attempts into something sharable. Blog posts, forum comments, fellowship snippets.</p>
+  </header>
+
+  <section class="page__section">
+    <form method="post" action="/writings">
+      <button type="submit" class="primary">+ Start a draft (seeded from today)</button>
+    </form>
+  </section>
+
+  {% if drafts %}
+    <section class="page__section">
+      <h2 class="section-label">Drafts · {{ drafts | length }}</h2>
+      <ul class="library-list">
+        {% for w in drafts %}
+          <li class="library-row writings-row">
+            <a class="library-row__main" href="/writings/{{ w.id }}">
+              <span class="library-row__title">{{ w.title or 'Untitled' }}</span>
+              <div class="library-row__meta">
+                <span class="badge">{{ w.word_count }} words</span>
+                <span class="muted">updated {{ w.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+              </div>
+            </a>
+            <form method="post"
+                  action="/writings/{{ w.id }}/delete"
+                  class="writings-row__delete"
+                  data-confirm-delete="{{ w.title or 'Untitled' }}">
+              <button type="submit" class="btn-danger-link" aria-label="Delete draft">Delete</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if published %}
+    <section class="page__section">
+      <h2 class="section-label">Published · {{ published | length }}</h2>
+      <ul class="library-list">
+        {% for w in published %}
+          <li class="library-row library-row--attempted writings-row">
+            <a class="library-row__main" href="/writings/{{ w.id }}">
+              <span class="library-row__title">{{ w.title or 'Untitled' }}</span>
+              <div class="library-row__meta">
+                <span class="badge">{{ w.word_count }} words</span>
+                <span class="muted">published {{ (w.published_at or w.updated_at).strftime('%Y-%m-%d') }}</span>
+              </div>
+            </a>
+            <form method="post"
+                  action="/writings/{{ w.id }}/delete"
+                  class="writings-row__delete"
+                  data-confirm-delete="{{ w.title or 'Untitled' }}">
+              <button type="submit" class="btn-danger-link" aria-label="Delete writing">Delete</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if not drafts and not published %}
+    <div class="empty-state">
+      <p class="empty-state__msg">No writings yet. Start one above — it'll pre-fill with today's reading + reflections + most recent attempt as scaffolding.</p>
+    </div>
+  {% endif %}
+</article>
+
+<script>
+  document.querySelectorAll("[data-confirm-delete]").forEach(function (form) {
+    form.addEventListener("submit", function (event) {
+      // Treat titles as text, never as JavaScript source.
+      if (!window.confirm("Permanently delete this draft or published writing? This cannot be undone.\n\n" + form.dataset.confirmDelete)) event.preventDefault();
+    });
+  });
+</script>
+{% endblock %}

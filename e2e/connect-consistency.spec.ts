@@ -1,0 +1,62 @@
+import {expect, test} from '@playwright/test';
+
+test('private notes preserve follow-up and confirmations reliably cancel or submit once', async ({page}) => {
+  const name = `Synthetic O'Brien "<review>" \\ contact`;
+  const created = await page.request.post('/connecting', {form:{name, cadence_days:'30'}});
+  const url = created.url();
+  await page.goto(url);
+  await expect(page.getByRole('heading', {name, exact:true})).toBeVisible();
+  let logs = 0;
+  let archives = 0;
+  page.on('request', req => {
+    if (req.method() !== 'POST') return;
+    if (req.url().endsWith('/interactions')) logs++;
+    if (req.url().endsWith('/archive')) archives++;
+  });
+  await page.locator('#int-kind').selectOption('received');
+  await page.locator('#int-date').fill('2000-01-01');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', {name:'Log it', exact:true}).click();
+  await expect(page.locator('.connecting-history__row')).toHaveCount(0);
+  expect(logs).toBe(0);
+  const firstDialog = page.waitForEvent('dialog');
+  const firstClick = page.getByRole('button', {name:'Log it', exact:true}).click();
+  const dialog = await firstDialog;
+  expect(dialog.message()).toContain(name);
+  await dialog.accept();
+  await firstClick;
+  await expect(page.locator('.connecting-history__row')).toHaveCount(1);
+  expect(logs).toBe(1);
+  await expect(page.locator('.connecting-row__tier')).toHaveText('cold');
+
+  await page.locator('#int-kind').selectOption('note');
+  await page.locator('#int-notes').fill('Synthetic private planning note');
+  const noteDialog = page.waitForEvent('dialog');
+  const noteClick = page.getByRole('button', {name:'Log it', exact:true}).click();
+  const note = await noteDialog;
+  expect(note.message()).toContain(name);
+  expect(note.message()).toMatch(/unchanged/i);
+  await note.accept();
+  await noteClick;
+  await expect(page.locator('.connecting-history__row')).toHaveCount(2);
+  await expect(page.locator('.connecting-row__tier')).toHaveText('cold');
+  expect(logs).toBe(2);
+  await page.goto('/connecting');
+  const row = page.locator('.connecting-row').filter({hasText:name});
+  await expect(row.locator('.connecting-row__flag')).toHaveText('reply may be due');
+  await expect(row.locator('.connecting-row__tier')).toHaveText('cold');
+
+  await page.goto(url);
+  page.once('dialog', prompt => prompt.dismiss());
+  await page.getByRole('button', {name:'Archive contact', exact:true}).click();
+  expect(archives).toBe(0);
+  await expect(page.getByRole('button', {name:'Archive contact', exact:true})).toBeVisible();
+  page.once('dialog', prompt => prompt.accept());
+  await page.getByRole('button', {name:'Archive contact', exact:true}).click();
+  await expect(page).toHaveURL(/\/connecting$/);
+  expect(archives).toBe(1);
+  await expect(page.locator('.connecting-row').filter({hasText:name})).toHaveCount(0);
+  await page.goto(url);
+  await expect(page.getByRole('button', {name:'Un-archive', exact:true})).toBeVisible();
+  await expect(page.locator('.connecting-history__row')).toHaveCount(2);
+});

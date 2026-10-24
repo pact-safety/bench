@@ -1,0 +1,302 @@
+/* motion.css — the bench motion system.
+   Loaded after tokens.css, before main.css component rules.
+
+   Two rules govern everything here:
+     1. Animate opacity and transform. Nothing else.
+     2. Every animation has an off-switch, applied globally at the bottom
+        of this file — never per component.
+
+   Both themes share every duration, ease, and keyframe. The hyperbolic
+   theme only stretches the ambient drift and softens two eases; it does
+   not get its own animations. */
+
+:root {
+  /* Durations ------------------------------------------------------- */
+  --duration-instant: 60ms;    /* press feedback, checkbox tick */
+  --duration-fast:    100ms;   /* hover, focus, colour shifts */
+  --duration-base:    150ms;   /* the default — most state changes */
+  --duration-slow:    250ms;   /* panel enters, disclosure, rail writes */
+  --duration-slower:  400ms;   /* route-level / onboarding step changes */
+  --duration-ambient: 24s;     /* the two sanctioned infinite loops */
+
+  /* Eases ------------------------------------------------------------ */
+  --ease-out:      cubic-bezier(0.2, 0.8, 0.2, 1);     /* things arriving */
+  --ease-in:       cubic-bezier(0.4, 0.0, 1, 1);       /* things leaving */
+  --ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);     /* state changes that matter */
+  --ease-linear:   linear;                             /* progress, spinners */
+
+  /* Stagger ---------------------------------------------------------- */
+  --stagger-step: 40ms;        /* per-item delay in a revealing list */
+
+  /* Bounded loops. Named because Law 5 has no literal durations, not
+     because they are tunable — these three are the only repeating
+     animations in the app and each is removed on state change. */
+  --duration-think:  1200ms;   /* Mira thinking dots */
+  --duration-parse:  1400ms;   /* onboarding parse shimmer */
+  --orb-period:      3200ms;   /* Mira voice orb (sanctioned ambient) */
+
+  /* Travel — how far an entering element moves. Small on purpose. */
+  --travel-sm: 4px;
+  --travel-md: 8px;
+  --travel-lg: 16px;
+}
+
+:root[data-theme="hyperbolic"] {
+  /* Glass is heavier than flat panels; entrances take slightly longer
+     and settle rather than snap. Same names, different feel. */
+  --duration-slow:   300ms;
+  --duration-slower: 480ms;
+  --ease-emphasis:   cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===================================================================
+   MIRA — chat surface
+   =================================================================== */
+
+/* Streaming reveal. The SSE reader wraps each arriving token in
+   <span class="mira-tok">; the span fades up once and is never
+   re-animated (animation-fill-mode forward + one-shot).
+   Do NOT animate the whole turn on every frame — that re-renders the
+   transcript and fights the scroll anchor. */
+@keyframes mira-tok-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mira-tok {
+  animation: mira-tok-in var(--duration-fast) var(--ease-out) both;
+}
+
+/* Turn enter — a whole message arriving (user send, history load). */
+@keyframes mira-turn-in {
+  from { opacity: 0; transform: translateY(var(--travel-md)); }
+  to   { opacity: 1; transform: none; }
+}
+.mira-turn {
+  animation: mira-turn-in var(--duration-slow) var(--ease-out) both;
+}
+/* History replays stagger; live turns do not (they arrive one at a time). */
+.mira-transcript--replay .mira-turn:nth-child(n) {
+  animation-delay: calc(var(--stagger-step) * var(--i, 0));
+}
+
+/* Thinking indicator — three dots, breathing not bouncing.
+   Sanctioned as a bounded loop: it is removed the moment the first
+   token arrives, so it is not one of the two ambient animations. */
+@keyframes mira-think {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40%           { opacity: 1;    transform: translateY(calc(var(--travel-sm) * -1)); }
+}
+.mira-thinking span {
+  animation: mira-think var(--duration-think) var(--ease-emphasis) infinite;
+}
+.mira-thinking span:nth-child(2) { animation-delay: calc(var(--stagger-step) * 4); }
+.mira-thinking span:nth-child(3) { animation-delay: calc(var(--stagger-step) * 8); }
+
+/* Citation chip — appears mid-stream when the [cite:] plugin resolves.
+   Scale from 0.92 so it reads as "landing", not "popping". */
+@keyframes mira-cite-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.mira-cite {
+  animation: mira-cite-in var(--duration-base) var(--ease-emphasis) both;
+  transition: color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+/* Composer — focus lift and send.
+   The lift is transform only; the ring is the focus token, untransitioned. */
+.mira-composer {
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.mira-composer:focus-within { transform: translateY(calc(var(--travel-sm) * -1)); }
+
+@keyframes mira-send {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.mira-composer--sending .mira-send { animation: mira-send var(--duration-slow) var(--ease-emphasis); }
+
+/* Agenda / memory rail — Mira writing an item in live.
+   The row expands via a grid-template-rows trick so no height is animated. */
+@keyframes mira-rail-in {
+  from { opacity: 0; transform: translateX(var(--travel-md)); }
+  to   { opacity: 1; transform: none; }
+}
+.mira-rail-item[data-state="new"] {
+  animation: mira-rail-in var(--duration-slow) var(--ease-emphasis) both;
+}
+/* The brief highlight that says "this is the thing that just changed". */
+@keyframes mira-rail-flash {
+  from { background: var(--accent-dim); }
+  to   { background: transparent; }
+}
+.mira-rail-item[data-state="new"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: mira-rail-flash var(--duration-slower) var(--ease-out) both;
+  animation-delay: var(--duration-slow);
+}
+
+/* Voice orb. The second and last sanctioned ambient loop.
+   Three states, one keyframe set, driven by data-state:
+     idle      — slow, shallow
+     listening — faster, deeper
+     speaking  — tied to amplitude via --amp (0..1), set from JS */
+@keyframes mira-orb-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(calc(1 + 0.06 * var(--amp, 1))); }
+}
+.mira-orb {
+  animation: mira-orb-pulse var(--orb-period) var(--ease-emphasis) infinite;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.mira-orb[data-state="idle"]      { --amp: 0.4; --orb-period: 4s; }
+.mira-orb[data-state="listening"] { --amp: 0.8; --orb-period: 1.8s; }
+.mira-orb[data-state="speaking"]  { --orb-period: 900ms; }
+
+/* Error / retry / spend cap. No shake — a failure state that jitters
+   reads as the app being broken rather than the request. Cross-fade. */
+@keyframes mira-state-swap {
+  from { opacity: 0; transform: translateY(var(--travel-sm)); }
+  to   { opacity: 1; transform: none; }
+}
+.mira-state {
+  animation: mira-state-swap var(--duration-base) var(--ease-out) both;
+}
+
+/* ===================================================================
+   ONBOARDING — step flow
+   =================================================================== */
+
+/* Step transition. Outgoing step leaves first, incoming arrives after;
+   the two never cross-fade on top of each other (double text is worse
+   than a beat of empty). Direction is set by data-dir on the wrapper. */
+@keyframes ob-step-in {
+  from { opacity: 0; transform: translateX(var(--ob-from, 24px)); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ob-step-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateX(var(--ob-to, -24px)); }
+}
+.ob-step[data-state="entering"] { animation: ob-step-in var(--duration-slower) var(--ease-emphasis) both; }
+.ob-step[data-state="leaving"]  { animation: ob-step-out var(--duration-slow) var(--ease-in) both; }
+.ob-flow[data-dir="back"] { --ob-from: -24px; --ob-to: 24px; }
+
+/* Progress rail — scaleX, never width. */
+.ob-progress__fill {
+  transform-origin: left center;
+  transform: scaleX(var(--progress, 0));
+  transition: transform var(--duration-slower) var(--ease-emphasis);
+}
+
+/* Field reveal — the CV parse writing extracted fields in, one by one.
+   --i is set per row by the template. */
+@keyframes ob-field-in {
+  from { opacity: 0; transform: translateY(var(--travel-md)); }
+  to   { opacity: 1; transform: none; }
+}
+.ob-field[data-state="parsed"] {
+  animation: ob-field-in var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-step) * var(--i, 0));
+}
+
+/* Parsing shimmer — a bounded loop, removed when the parse resolves.
+   Opacity only; no background-position animation. */
+@keyframes ob-parsing {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+.ob-parsing { animation: ob-parsing var(--duration-parse) var(--ease-emphasis) infinite; }
+
+/* Quiz option select. */
+.ob-option {
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-instant) var(--ease-out);
+}
+.ob-option:active { transform: translateY(1px); }
+
+/* Tour spotlight. The scrim fades; the callout arrives. The highlighted
+   element is lifted by a shadow step, not a glow.
+
+   POSITIONING RULE: never centre an animated element with a transform.
+   `animation-fill-mode: both` keeps applying the keyframe's end transform
+   after the animation finishes, which overwrites a translate(-50%,-50%)
+   and drops the element out of position. Centre with `inset: 0;
+   margin: auto; width: …; height: fit-content;` and leave transform to
+   the animation. Same rule applies to modals and popovers. */
+@keyframes ob-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ob-callout-in {
+  from { opacity: 0; transform: translateY(var(--travel-lg)) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ob-callout {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  box-sizing: border-box;
+}
+.ob-scrim   { animation: ob-scrim-in var(--duration-slow) var(--ease-out) both; }
+.ob-callout { animation: ob-callout-in var(--duration-slower) var(--ease-emphasis) both; }
+.ob-callout { animation-delay: var(--duration-fast); }
+
+/* ===================================================================
+   THE OFF-SWITCH — global, not per component.
+   Covers the OS setting and the bench a11y toggle. Anything added above
+   is covered automatically; do not write local reduce-motion rules.
+   =================================================================== */
+/* ===================================================================
+   ONBOARDING BUBBLES — the first-run strip
+   =================================================================== */
+
+/* The strip arrives once, in place, from below. It is part of the flow,
+   so it must not animate anything that reflows its neighbours. */
+@keyframes ob-bubble-in {
+  from { opacity: 0; transform: translateY(var(--bubble-travel, var(--travel-md))); }
+  to   { opacity: 1; transform: none; }
+}
+.ob-bubble {
+  animation: ob-bubble-in var(--duration-slow) var(--ease-out) both;
+}
+/* Advancing within a page is a state change, not an arrival. */
+.ob-bubble-slot[data-advanced] .ob-bubble {
+  animation-duration: var(--duration-base);
+  animation-timing-function: var(--ease-emphasis);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] *::before,
+:root[data-reduce-motion] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 1ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast drops glass and blur everywhere via the indirection
+   tokens, so no animation or component rule needs to know about it. */
+:root[data-high-contrast] {
+  --panel-fill: var(--surface);
+  --panel-fill-raised: var(--surface-2);
+  --panel-blur: none;
+  --panel-inset: none;
+}

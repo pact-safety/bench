@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Request access — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--request-access">
+  <header class="page__head">
+    <h1 class="page__title">Request access</h1>
+    <p class="page__meta">
+      Li's Bench is in alpha and currently invite-only. If you'd like
+      to try it — for your own interview prep, or because you're
+      curious about the engineering-method workflow — drop a note
+      below and Li will get back to you.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <form method="post" action="/auth/request-access" class="request-access__form">
+      {# Honeypot: real users never fill `website`. Bots filling
+         every input do. Bounced server-side, not via CSS so screen
+         readers don't get the wrong cue. #}
+      <div class="hp-field" aria-hidden="true">
+        <label for="website">Website (leave blank)</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <label class="form-field">
+        <span class="form-field__label">Name</span>
+        <input type="text" name="name" required maxlength="120"
+               placeholder="Your name" value="{{ form.name or '' }}">
+      </label>
+
+      <label class="form-field">
+        <span class="form-field__label">Email</span>
+        <input type="email" name="email" required maxlength="200"
+               placeholder="you@example.com" value="{{ form.email or '' }}">
+        <span class="form-field__hint">
+          Use the email tied to your GitHub account — that's the one
+          OAuth will send back, and it has to match for access.
+        </span>
+      </label>
+
+      <label class="form-field">
+        <span class="form-field__label">GitHub handle <span class="muted">(optional)</span></span>
+        <input type="text" name="github_handle" maxlength="80"
+               placeholder="@octocat" value="{{ form.github_handle or '' }}">
+      </label>
+
+      <label class="form-field">
+        <span class="form-field__label">What brings you here? <span class="muted">(optional)</span></span>
+        <textarea name="note" rows="4" maxlength="1000"
+                  placeholder="A research role you're prepping for, a paper you're thinking through, etc.">{{ form.note or '' }}</textarea>
+      </label>
+
+      {% if error %}
+        <p class="field-error" role="alert">{{ error }}</p>
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" class="button button--primary">Send request</button>
+        <a class="action-link" href="/login">Back to sign-in</a>
+      </div>
+
+      <p class="muted form-meta">
+        We only store the email + note to triage requests. No tracking,
+        no list. If you change your mind, ask Li to delete your row.
+      </p>
+    </form>
+  </section>
+</article>
+
+{% endblock %}

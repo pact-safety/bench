@@ -1,0 +1,83 @@
+name: Security
+
+# Non-blocking security signal, deliberately isolated from deploy.yml.
+#
+# deploy.yml's `test` job gates the Fly deploy — a red test there
+# means the deploy doesn't fire. This workflow must NEVER be wired
+# into that gate (no `needs:`, no shared job). Findings here surface
+# on PRs and on pushes to main as their own checks/annotations; they
+# cannot block a deploy because deploy.yml doesn't reference them.
+# See docs/security/ci-and-deps.md.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The CLI rather than gitleaks-action: the action requires a
+      # GITLEAKS_LICENSE secret for organization-owned repos, so it fails on
+      # the public pact-safety/bench export. The binary is pinned by checksum
+      # because it runs with repo contents in reach.
+      - name: Install gitleaks
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLo "$tarball" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+
+      # Scan only the commits this event introduces, like the action did.
+      # A full-history scan would re-flag old commits forever (e.g. the
+      # env-isolation canary before it carried its allow marker).
+      - name: Scan for secrets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            range="${BASE_SHA}..HEAD"
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            range="${BEFORE_SHA}..HEAD"
+          fi
+          if [ -n "${range:-}" ]; then
+            ./gitleaks git --redact --no-banner --log-opts="$range" .
+          else
+            ./gitleaks dir --redact --no-banner .
+          fi
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project + pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pip-audit
+
+      - name: Audit dependencies for known CVEs
+        # Advisory only: a newly-disclosed upstream CVE outside our
+        # control shouldn't turn this workflow red. Findings still
+        # show up in the step's log/annotations.
+        continue-on-error: true
+        run: pip-audit

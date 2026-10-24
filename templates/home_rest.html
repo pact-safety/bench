@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Drill today — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page rest-day">
+  <header class="rest-day__head">
+    <h1 class="rest-day__day">{{ day_label }}.</h1>
+    <p class="rest-day__greeting">{{ display_name or "Hi" }}, hope today's a good one.</p>
+    <p class="rest-day__copy">
+      No drills today. The work this week is consolidating while you
+      do something else.
+    </p>
+  </header>
+
+  {% if pregenerated_ready %}
+    <section class="rest-day__pregen" aria-label="Pre-generated reflection ready">
+      <p class="rest-day__pregen-headline">
+        <strong>Your weekly reflection is ready.</strong>
+      </p>
+      <p class="muted">
+        Pre-generated this morning — open it whenever you've got a few
+        quiet minutes. No 3-5s wait this time.
+      </p>
+      <a class="rest-day__pregen-cta" href="/reflect/{{ pregenerated_ready.id }}">
+        Open this week's reflection →
+      </a>
+    </section>
+  {% endif %}
+
+  {% if week_recap.total > 0 %}
+    <details class="aim-details rest-day__recap">
+      <summary class="aim-details__summary">
+        <span class="aim-details__title">Have to peek? Here's what your week looked like at the bench.</span>
+        <span class="aim-details__meta">{{ week_recap.total }} logged</span>
+      </summary>
+      <div class="aim-details__body rest-day__recap-body">
+        {% for key in ["attempts", "content", "writings", "reflections", "assessments", "credentials"] %}
+          {% set section = week_recap[key] %}
+          {% if section["count"] > 0 %}
+            <section class="rest-day__section">
+              <h2 class="section-label">{{ section["label"] }} · {{ section["count"] }}</h2>
+              <ul class="rest-day__list">
+                {% for item in section["items"] %}
+                  <li class="rest-day__item">
+                    {% if item.href %}
+                      <a href="{{ item.href }}">{{ item.title }}</a>
+                    {% else %}
+                      <span>{{ item.title }}</span>
+                    {% endif %}
+                    {% if item.meta %}
+                      <span class="rest-day__meta muted">{{ item.meta }}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </section>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+  {% else %}
+    <p class="rest-day__no-recap muted">Nothing logged this week — that's fine too.</p>
+  {% endif %}
+</article>
+
+{% endblock %}

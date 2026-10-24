@@ -1,0 +1,90 @@
+# RSS news feeds for the /news surface (rss-news-feed Phase 1).
+#
+# Edited freely by the operator. New entries take effect on the next
+# poller tick (hourly by default; see app/services/news_poller.py).
+#
+# Tier 1 = labs + alignment forum. Higher signal-to-noise; show by
+#          default on /news.
+# Tier 2 = weekly digests + curated commentary. Slower-moving;
+#          surface but de-emphasize visually.
+#
+# `slug` is the dedup + UI key. Keep it stable across renames; if you
+# change a slug, all prior items still reference the old one and won't
+# auto-migrate (small cost, easy to fix manually if you ever care).
+#
+# `url` is the RSS / Atom feed URL. feedparser handles both formats
+# transparently.
+
+# ============================================================
+# Tier 1 — labs + canonical alignment publishers
+# ============================================================
+
+[[feed]]
+slug = "anthropic"
+name = "Anthropic News"
+url = "https://www.anthropic.com/news/rss.xml"
+tier = 1
+
+[[feed]]
+slug = "openai"
+name = "OpenAI Blog"
+url = "https://openai.com/blog/rss.xml"
+tier = 1
+
+[[feed]]
+slug = "deepmind"
+name = "Google DeepMind"
+url = "https://deepmind.google/blog/rss.xml"
+tier = 1
+
+[[feed]]
+slug = "metr"
+name = "METR"
+url = "https://metr.org/blog/feed.xml"
+tier = 1
+
+[[feed]]
+slug = "alignment-forum"
+name = "Alignment Forum"
+url = "https://www.alignmentforum.org/feed.xml"
+tier = 1
+
+[[feed]]
+slug = "lesswrong-curated"
+name = "LessWrong (curated)"
+url = "https://www.lesswrong.com/feed.xml?view=curated-rss"
+tier = 1
+
+[[feed]]
+slug = "cais"
+name = "Center for AI Safety newsletter"
+url = "https://newsletter.safe.ai/feed"
+tier = 1
+
+# ============================================================
+# Tier 2 — weekly digests + curated commentary
+# ============================================================
+
+[[feed]]
+slug = "import-ai"
+name = "Import AI (Jack Clark)"
+url = "https://importai.substack.com/feed"
+tier = 2
+
+[[feed]]
+slug = "zvi"
+name = "Don't Worry About the Vase (Zvi)"
+url = "https://thezvi.substack.com/feed"
+tier = 2
+
+[[feed]]
+slug = "ai-snake-oil"
+name = "AI Snake Oil"
+url = "https://www.aisnakeoil.com/feed"
+tier = 2
+
+[[feed]]
+slug = "dwarkesh"
+name = "Dwarkesh Podcast"
+url = "https://www.dwarkesh.com/feed"
+tier = 2

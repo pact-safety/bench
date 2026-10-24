@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Section assessment — {{ section.title }} — Li's Bench{% endblock %}
+{% block body %}
+{% set form = form or {} %}
+<article class="page learning-page">
+  <header class="page__head">
+    <p><a href="/tracks/{{ track.slug }}/sections/{{ idx }}">Back to {{ track.title }}</a></p>
+    <h1 class="page__title">{{ section.title }}</h1>
+    <p>Section assessment pilot · human review</p>
+    <p>This is unproctored practice evidence, not certification. Written and oral responses use the same questions and rubric. Submission alone does not grant an exemption.</p>
+  </header>
+  {% if error %}<p role="alert" aria-live="polite">{{ error }}</p>{% endif %}
+  {% if form.get('exam_version', spec.version) != spec.version %}<p role="status">These questions have changed since you opened the form. Your draft remains below for copying; it will not be submitted as a response to the new version. <a href="/tracks/{{ track.slug }}/sections/{{ idx }}/exam">Open current assessment</a>.</p>{% endif %}
+  <section class="page__section">
+    <h2>What to demonstrate</h2>
+    <p>Close the source and answer independently. Explain your reasoning and attempt the fresh application, rather than reading a prepared answer aloud. Report any notes or help you use.</p>
+    <ol>
+    {% for question in spec.questions %}
+      <li>{% if question is mapping %}{% if question.kind == 'application' and not question.prompt.startswith('Fresh application:') %}<strong>Fresh application:</strong> {% endif %}{{ question.prompt }}{% else %}{{ question }}{% endif %}</li>
+    {% endfor %}
+    </ol>
+    {% if spec.application_task %}<h3>Fresh application</h3><p>{{ spec.application_task }}</p>{% endif %}
+  </section>
+  <section class="page__section">
+    <h2>Review rubric</h2>
+    <p>The provisional pilot threshold is {{ spec.threshold }}% overall, with at least 3/4 on every essential criterion. A human reviewer must cite evidence for each rating. No automatic pass is awarded.</p>
+    <ul class="learning-outline">
+    {% for criterion in spec.criteria %}
+      <li class="learning-section"><h3>{{ criterion.label }}{% if criterion.essential %} <span class="badge">essential</span>{% endif %}</h3>
+        <p>{{ criterion.description }}</p>
+        <details><summary>Evidence for each rating</summary><ul>{% for score, anchor in criterion.anchors | dictsort %}<li><strong>{{ score }}/4:</strong> {{ anchor }}</li>{% endfor %}</ul></details>
+      </li>
+    {% endfor %}
+    </ul>
+    {% if spec.practical_required %}<p>Practical evidence is also required. These exercises must pass their tests before an exemption applies:</p>
+      <ul>{% if practical_gate %}{% for item in practical_gate['items'] %}<li>{% if item.unavailable %}{{ item.title }} — assessment unavailable; retry later{% else %}<a href="/problem/{{ item.slug }}">{{ item.title }}</a>{% if item.passed %} · passing{% endif %}{% endif %}</li>{% endfor %}{% else %}{% for slug in spec.practical_required %}<li>{{ slug }}</li>{% endfor %}{% endif %}</ul>
+    {% endif %}
+    {% if practical_gate %}<p role="status">Practical checks: {{ practical_gate.passed_count }}/{{ practical_gate.total }} passing. {% if not practical_gate.passed %}The required checks must pass before review can grant an exemption.{% endif %}</p>{% endif %}
+    <p>An approved exemption applies only to this section. It does not complete other prerequisites.</p>
+  </section>
+  <section class="page__section">
+    <h2>Your response</h2>
+    <form method="post" action="/tracks/{{ track.slug }}/sections/{{ idx }}/exam" id="track-exam-form">
+      <input type="hidden" name="exam_version" value="{{ form.get('exam_version', spec.version) }}">
+      <input type="hidden" name="request_id" value="{{ request_id }}">
+      <div class="form-field">
+        <label for="exam-modality">Response format</label>
+        <select id="exam-modality" name="modality">
+          <option value="written"{% if form.get('modality', 'written') == 'written' %} selected{% endif %}>Written</option>
+          <option value="oral"{% if form.get('modality') == 'oral' %} selected{% endif %}>Oral — review the transcript before sending</option>
+        </select>
+        <p class="form-field__hint">Typing always works. Optional dictation sends audio for transcription; you can edit the returned text. If dictation is unavailable, choose Written and continue typing.</p>
+      </div>
+      <div class="form-field">
+        <label for="exam-answers">Answers, reasoning, and fresh application</label>
+        <textarea id="exam-answers" name="answers" rows="12" maxlength="12000" required data-voice-note data-voice-note-append data-voice-note-label="Dictate an answer" aria-describedby="exam-answer-help">{{ form.get('answers', '') }}</textarea>
+        <p class="form-field__hint" id="exam-answer-help">Number your answers to match the questions. Dictation appends to your existing text. Review it for transcription errors before submitting.</p>
+      </div>
+      <div class="form-field">
+        <label for="exam-transcript-confirmed"><input id="exam-transcript-confirmed" type="checkbox" name="transcript_confirmed" value="1"{% if form.get('transcript_confirmed') %} checked{% endif %}> I have reviewed the oral transcript and confirm it represents my response.</label>
+        <p class="form-field__hint">Required for oral responses. Editing the answer means you need to confirm it again.</p>
+      </div>
+      <div class="form-field">
+        <label for="exam-assistance">What assistance did you use?</label>
+        <select id="exam-assistance" name="assistance" required>
+          <option value=""{% if not form.get('assistance') %} selected{% endif %}>Choose assistance used</option>
+          {% for value, label in [('none','None — answered independently'),('notes','Notes or source material'),('help','Help from a person or AI')] %}<option value="{{ value }}"{% if form.get('assistance') == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <p class="form-field__hint">Assisted work can inform your next practice step, but does not qualify for an exemption.</p>
+      </div>
+      <div class="form-field"><label for="exam-artifact">Supporting work link (optional)</label><input id="exam-artifact" type="url" name="artifact_url" maxlength="2048" value="{{ form.get('artifact_url', '') }}"><p class="form-field__hint">Saved for the reviewer. Bench does not fetch this link.</p></div>
+      <p id="exam-status" role="status" aria-live="polite"></p>
+      <button type="submit" class="btn btn--primary">Submit for human review</button>
+    </form>
+  </section>
+  {% if submissions %}<section class="page__section" id="submissions"><h2>Your submissions</h2>
+    {% for submission in submissions %}
+      <details class="learning-section"{% if loop.first %} open{% endif %}><summary>{% if submission.state == 'pending' %}Pending human review{% else %}Human review recorded{% endif %} · {{ submission.submitted_at }}</summary>
+        {% if submission.spec_version != spec.version %}<p role="status">Earlier assessment version; does not grant a current exemption.</p>{% endif %}
+        <p>{{ submission.modality }} · assistance: {{ submission.assistance }}</p>
+        {% if submission.assistance != 'none' %}<p>Practice review only — cannot test out.</p>{% endif %}
+        <p class="saved-prose">{{ submission.responses.get('answers', '') }}</p>
+        {% if submission.responses.get('artifact_url') %}<p><a href="{{ submission.responses.artifact_url }}" target="_blank" rel="noopener">Supporting work</a></p>{% endif %}
+        {% if submission.review %}<p>Review decision: {{ submission.review.verdict | replace('_', ' ') }}. Provisional rubric result: {{ submission.review.percentage }}%.</p>
+          <ul>{% for criterion_id, evidence in submission.review.get('evidence', {}).items() %}
+            {% set criterion = (spec.criteria | selectattr('id', 'equalto', criterion_id) | first) if submission.spec_version == spec.version else none %}
+            {% set score = submission.review.get('scores', {}).get(criterion_id) %}
+            <li><strong>{{ criterion.label if criterion else criterion_id }} — {% if score is not none %}{{ score }}/4{% else %}rating unavailable{% endif %}:</strong> {{ evidence }}</li>
+          {% endfor %}</ul>
+        {% endif %}
+        <p><a href="/tracks/{{ track.slug }}/sections/{{ idx }}">Return to section status</a></p>
+      </details>
+    {% endfor %}
+  </section>{% endif %}
+</article>
+<script>
+(function () {
+  var form = document.getElementById('track-exam-form');
+  var answers = document.getElementById('exam-answers');
+  var modality = document.getElementById('exam-modality');
+  var confirmed = document.getElementById('exam-transcript-confirmed');
+  var status = document.getElementById('exam-status');
+  function update() { confirmed.required = modality.value === 'oral'; }
+  modality.addEventListener('change', update);
+  answers.addEventListener('input', function () { confirmed.checked = false; });
+  answers.addEventListener('voice-note-state', function () {
+    if (answers.dataset.voiceNoteBusy === '1') {
+      modality.value = 'oral'; confirmed.checked = false; update();
+    }
+  });
+  form.addEventListener('submit', function (event) {
+    if (answers.dataset.voiceNoteBusy === '1') {
+      event.preventDefault(); status.textContent = 'Finish dictation and review the transcript before submitting.'; return;
+    }
+    if (modality.value === 'oral' && !confirmed.checked) {
+      event.preventDefault(); status.textContent = 'Review and confirm the transcript before submitting an oral response.'; confirmed.focus();
+    }
+  });
+  update();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ target.strftime('%Y-%m-%d') }} — Journal{% endblock %}
+{% block body %}
+
+<article class="page page--journal">
+  <header class="today__head">
+    <nav class="today__nav" aria-label="day navigation">
+      <a class="today__nav-arrow" href="{{ prev_url }}" title="Previous day">←</a>
+      <span class="today__date">{{ today_date }}</span>
+      <a class="today__nav-arrow" href="{{ next_url }}" title="{% if next_is_today %}Back to today{% else %}Next day{% endif %}">→</a>
+    </nav>
+    <h1 class="today__title">Journal</h1>
+    <p class="today__hint">
+      What you actually did. Scheduling is now-relative; this page is a
+      log, not a re-creation of yesterday's surface.
+      {% if next_is_today %}<a href="/" class="action-link">jump to today →</a>{% endif %}
+    </p>
+  </header>
+
+  <section class="today-block">
+    <header class="today-block__head">
+      <h2 class="section-label">Attempts</h2>
+      <span class="muted today-block__count">{{ day_attempts | length }}</span>
+    </header>
+    {% if day_attempts %}
+      <ul class="library-list">
+        {% for a, p in day_attempts %}
+          <li class="library-row {% if a.test_passed %}library-row--attempted{% endif %}">
+            <a class="library-row__main" href="/problem/{{ p.slug }}">
+              <span class="library-row__title">{{ p.title }}</span>
+              <div class="library-row__meta">
+                <span class="badge badge--{{ p.problem_type }}">{{ p.problem_type.replace('_',' ') }}</span>
+                <span class="badge">{{ a.started_at.strftime('%H:%M') }}</span>
+                {% if a.test_passed %}<span class="badge" style="border-color:#1e8a5e;color:#1e8a5e">PASS</span>
+                {% elif a.test_passed is sameas false %}<span class="badge" style="border-color:#b04a00;color:#b04a00">FAIL</span>{% endif %}
+                {% if a.interview_mode %}<span class="badge badge--em">interview</span>{% endif %}
+                {% if a.confidence_1_to_5 %}<span class="muted">conf {{ a.confidence_1_to_5 }}/5</span>{% endif %}
+              </div>
+            </a>
+            {% if a.id %}<a class="action-link" href="/attempt/{{ a.id }}/review">review →</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">
+        <p class="empty-state__msg">No problem attempts on this day.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="today-block">
+    <header class="today-block__head">
+      <h2 class="section-label">Content completed</h2>
+      <span class="muted today-block__count">{{ day_content | length }}</span>
+    </header>
+    {% if day_content %}
+      <ul class="library-list">
+        {% for item, pr in day_content %}
+          <li class="library-row">
+            <a class="library-row__main" href="/content/{{ item.slug }}">
+              <span class="library-row__title">
+                {% if pr.favorited %}<span class="library-row__star">★</span>{% endif %}
+                {{ item.title }}
+              </span>
+              <div class="library-row__meta">
+                <span class="badge">{{ item.kind }}</span>
+                <span class="badge">{{ pr.checked_at.strftime('%H:%M') }}</span>
+                {% if pr.rating_1_to_5 %}<span class="badge">{{ '★' * pr.rating_1_to_5 }}</span>{% endif %}
+                {% for a in item.axes %}<span class="tag">{{ a.replace('_',' ') }}</span>{% endfor %}
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">
+        <p class="empty-state__msg">No content marked complete on this day.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if day_feedback %}
+    <section class="today-block">
+      <header class="today-block__head">
+        <h2 class="section-label">Feedback left</h2>
+        <span class="muted today-block__count">{{ day_feedback | length }}</span>
+      </header>
+      <ul class="fb-list">
+        {% for fb in day_feedback %}
+          <li class="fb-item fb-item--quiet">
+            <span class="fb-item__id">#{{ fb.id }}</span>
+            <span class="muted">{{ fb.created_at.strftime('%H:%M') }}</span>
+            <a class="fb-item__url" href="{{ fb.url }}">{{ fb.url }}</a>
+            <p class="fb-item__body fb-item__body--quiet">{{ fb.body[:300] }}{% if fb.body|length > 300 %}…{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

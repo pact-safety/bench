@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Problem · prototype — Li's Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="./_prototype.css">
+</head>
+<body data-variants="A,B,C" data-surface="problem">
+<div class="proto-banner">prototype · problem · <a href="./">all surfaces</a></div>
+
+<!-- shared problem body (rendered inside each variant's main so the nav
+     wraps it correctly). We use a small template literal in a script
+     to avoid duplicating 100 lines three times. -->
+<template id="problem-body">
+  <article class="problem">
+    <header class="problem__head">
+      <div class="problem__meta">
+        <span class="badge badge--code_compose">code compose</span>
+        <span class="badge badge--time">15 min</span>
+        <span class="badge badge--diff">medium</span>
+        <span class="tag">algo</span>
+        <span class="tag">hashmap</span>
+      </div>
+      <h1>Two-sum variants</h1>
+      <p class="problem__try-interview muted">
+        Practicing freely. <a href="#">→ try this in interview mode</a> for a timed, no-aids run.
+      </p>
+    </header>
+
+    <section class="problem__prompt md">
+      <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return <em>all unique pairs</em> <code>(i, j)</code> where <code>nums[i] + nums[j] == target</code>, with <code>i &lt; j</code>.</p>
+      <p>Constraints:</p>
+      <ul>
+        <li><code>2 &lt;= len(nums) &lt;= 10⁵</code></li>
+        <li><code>-10⁹ &lt;= nums[i] &lt;= 10⁹</code></li>
+        <li>Each index can appear in at most one pair.</li>
+      </ul>
+      <p>Example:</p>
+      <pre><code>nums   = [2, 7, 11, 15, -2]
+target = 9
+→ [(0, 1), (3, 4)]   # 2+7=9, 15+(-2)=... wait that's 13, ignore me</code></pre>
+      <p>Walk through your approach before coding. State the complexity you're aiming for.</p>
+    </section>
+
+    <details class="refs">
+      <summary>references for this problem</summary>
+      <div class="refs__group">
+        <h4 class="refs__group-label">Approach</h4>
+        <ul class="refs__list">
+          <li class="refs__item">
+            <a href="#">Hash-map two-sum — CTCI 16.24</a>
+            <span class="refs__book">Cracking the Coding Interview · p. 543</span>
+            <span class="refs__why">Single-pass O(n) — classic pattern</span>
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <form class="solve">
+      <label for="approach">Approach (1-2 sentences before code)</label>
+      <textarea id="approach" rows="3" placeholder="State the data structure + complexity you're going for…"></textarea>
+
+      <div class="lang-toggle" style="margin-top: var(--space-4);">
+        <span class="muted">Language:</span>
+        <strong>Python</strong>
+        <a href="#" class="muted">JS</a>
+      </div>
+
+      <textarea name="code" rows="14" spellcheck="false">def two_sum_pairs(nums, target):
+    seen = {}
+    pairs = []
+    for i, n in enumerate(nums):
+        if target - n in seen:
+            pairs.append((seen[target - n], i))
+        seen.setdefault(n, i)
+    return pairs</textarea>
+
+      <div class="confidence">
+        <span>Confidence:</span>
+        <label><input type="radio" name="conf" value="1"> 1 (guessing)</label>
+        <label><input type="radio" name="conf" value="2"> 2</label>
+        <label><input type="radio" name="conf" value="3" checked> 3</label>
+        <label><input type="radio" name="conf" value="4"> 4</label>
+        <label><input type="radio" name="conf" value="5"> 5 (rock solid)</label>
+      </div>
+
+      <p style="margin-top: var(--space-5);">
+        <button type="button" class="primary">Run tests</button>
+        <span class="muted" style="margin-left: var(--space-3);">submits to /submit/&lt;slug&gt; via HTMX</span>
+      </p>
+    </form>
+
+    <!-- Mock result block — what the HTMX swap would render -->
+    <section class="result result--pass" style="margin-top: var(--space-5);">
+      <header class="result__head">
+        <span class="result__verdict">PASS · 5/5</span>
+        <span class="result__score">score: <strong>92</strong></span>
+      </header>
+      <p class="result__message">Clean single-pass O(n). Edge cases (empty input, all duplicates, negative numbers) all covered.</p>
+      <pre class="result__output">tests/test_two_sum_pairs.py::test_empty PASSED
+tests/test_two_sum_pairs.py::test_basic PASSED
+tests/test_two_sum_pairs.py::test_duplicates PASSED
+tests/test_two_sum_pairs.py::test_negatives PASSED
+tests/test_two_sum_pairs.py::test_large_input PASSED [0.3s]
+============================== 5 passed ==============================</pre>
+    </section>
+
+    <section class="review" style="margin-top: var(--space-5);">
+      <header class="review__head">
+        <h2 class="review__title">Review</h2>
+        <span class="muted">model: claude-sonnet</span>
+      </header>
+      <p class="review__summary">Strong solution. Idiomatic Python — <code>setdefault</code> avoids the explicit guard. The <code>seen[target - n]</code> lookup pattern is the right one. One micro-nit: the variable <code>n</code> reads ambiguously in a Two-Sum context where N already means input length; <code>x</code> or <code>num</code> would be clearer.</p>
+    </section>
+  </article>
+</template>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT A — Palette-primary · Comfortable                    ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--A">
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav--palette" aria-label="Primary">
+        <a class="brand nav__brand" href="/">Li's Bench</a>
+        <span style="flex: 1"></span>
+        <button class="nav__palette-hint" type="button" aria-label="Open command palette">
+          <span>jump to anywhere</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+      </nav>
+    </div>
+  </header>
+  <main class="container" data-mount="problem"></main>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT B — Visible-rail · Comfortable                       ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--B">
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Li's Bench</a>
+      <nav class="header-nav" aria-label="Primary">
+        <a class="header-nav__link is-active" href="#">Drill</a>
+        <a class="header-nav__link" href="#">Learn</a>
+        <a class="header-nav__link" href="#">Tracks</a>
+        <a class="header-nav__link" href="#">Reflect</a>
+        <a class="header-nav__link" href="#">Write</a>
+        <a class="header-nav__link" href="#">Aim</a>
+        <a class="header-nav__link" href="#">Focus</a>
+        <a class="header-nav__link" href="#">Decisions</a>
+        <a class="header-nav__link" href="#">News</a>
+      </nav>
+      <div class="header-controls">
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+      </div>
+    </div>
+  </header>
+  <main class="container" data-mount="problem"></main>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT C — Hybrid · Compact                                 ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--C">
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Li's Bench</a>
+      <nav class="nav--hybrid" aria-label="Primary">
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Prep</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Problem</a>
+            <a class="nav__group-link" href="#">Warmup</a>
+            <a class="nav__group-link" href="#">Voices</a>
+            <a class="nav__group-link" href="#">Library</a>
+            <a class="nav__group-link" href="#">News</a>
+          </div>
+        </div>
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Make</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Writings</a>
+            <a class="nav__group-link" href="#">Decisions</a>
+            <a class="nav__group-link" href="#">Reflect</a>
+          </div>
+        </div>
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Assess</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Skills</a>
+            <a class="nav__group-link" href="#">Readiness</a>
+            <a class="nav__group-link" href="#">Credentials</a>
+            <a class="nav__group-link" href="#">JDs</a>
+            <a class="nav__group-link" href="#">Focus</a>
+          </div>
+        </div>
+        <span style="flex: 1"></span>
+        <button class="nav__palette-hint" type="button">
+          <span>jump to</span>
+          <kbd>⌘K</kbd>
+        </button>
+      </nav>
+      <div class="header-controls">
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+      </div>
+    </div>
+  </header>
+  <main class="container" data-mount="problem"></main>
+</section>
+
+<script>
+  // Mount the shared problem body into each variant's <main>. Cheap
+  // template duplication so we don't have 600+ lines of problem-card
+  // HTML repeated three times.
+  (function () {
+    var tmpl = document.getElementById('problem-body');
+    document.querySelectorAll('[data-mount="problem"]').forEach(function (m) {
+      m.appendChild(tmpl.content.cloneNode(true));
+    });
+  })();
+</script>
+<script src="./_switcher.js"></script>
+</body>
+</html>

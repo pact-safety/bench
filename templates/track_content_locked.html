@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — Library{% endblock %}
+{% block body %}
+<article class="page learning-page">
+  <header class="page__head">
+    <p><a href="/library?track={{ track_context.track.slug }}">← {{ track_context.track.title }} library</a></p>
+    <h1 class="page__title">{{ item.title }}</h1>
+    <p><span class="badge">{{ item.kind }}</span> <span class="badge">Locked · prerequisites</span></p>
+  </header>
+  <section class="page__section">
+    <h2 class="section-label">Complete the prerequisites first</h2>
+    <ul>{% for idx, title in track_context.missing_prerequisites %}<li><a href="/tracks/{{ track_context.track.slug }}/sections/{{ idx }}">{{ title }}</a></li>{% endfor %}</ul>
+    <p>Passing a section practice check or receiving a reviewed exam exemption unlocks the next material. Marking a resource complete does not skip these checks.</p>
+    <a href="{{ track_context.check_url }}">View section status and assessment options →</a>
+  </section>
+</article>
+{% endblock %}

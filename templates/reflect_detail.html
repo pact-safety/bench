@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Reflection {{ refl.generated_at.strftime('%Y-%m-%d') }} — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--reflect-detail">
+  <header class="page__head">
+    <h1 class="page__title">Reflection · {{ refl.generated_at.strftime('%Y-%m-%d') }}</h1>
+    <p class="page__meta">
+      Window: {{ refl.period_start.strftime('%Y-%m-%d') }} → {{ refl.period_end.strftime('%Y-%m-%d') }} ·
+      <span class="badge">{{ refl.method }}{% if refl.model_used %} · {{ refl.model_used }}{% endif %}</span> ·
+      <a class="action-link" href="/reflect">← all reflections</a>
+    </p>
+  </header>
+
+  {% if refl.summary_md %}
+    <section class="page__section reflect__summary">
+      <p>{{ refl.summary_md }}</p>
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    <h2 class="section-label">Prompts</h2>
+    <ol class="reflect__prompts">
+      {% for p in refl.prompts %}
+        <li class="reflect-prompt">
+          <span class="reflect-prompt__label">{{ p.label }}</span>
+          <p class="reflect-prompt__body">{{ p.prompt }}</p>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Your response</h2>
+    <form method="post" action="/reflect/{{ refl.id }}/save" class="reflect__response">
+      {% set calibration = refl.calibration_json if refl.calibration_json is mapping else {} %}
+      <textarea name="response_md" rows="14" placeholder="Take your time. One paragraph per prompt is plenty." spellcheck="true" data-autosave data-voice-note data-voice-note-label="Dictate response">{{ refl.response_md or '' }}</textarea>
+      {% if has_calibration_prompt %}
+        <fieldset class="reflect-calibration" aria-label="Calibration check">
+          <legend>Calibration check</legend>
+          <p class="muted">
+            Structured check: what you predicted vs what actually happened.
+          </p>
+          <div class="reflect-calibration__grid">
+            <label class="reflect-calibration__field">
+              <span>Predicted success (%)</span>
+              <input
+                type="number"
+                name="calibration_predicted_pct"
+                min="0"
+                max="100"
+                step="1"
+                inputmode="numeric"
+                value="{{ calibration.get('predicted_pct', '') }}"
+              >
+            </label>
+            <label class="reflect-calibration__field">
+              <span>Actual success (%)</span>
+              <input
+                type="number"
+                name="calibration_actual_pct"
+                min="0"
+                max="100"
+                step="1"
+                inputmode="numeric"
+                value="{{ calibration.get('actual_pct', '') }}"
+              >
+            </label>
+          </div>
+          <label class="reflect-calibration__field reflect-calibration__field--full">
+            <span>Gap notes (optional)</span>
+            <textarea name="calibration_gap_md" rows="3" placeholder="What explains the gap?">{{ calibration.get('gap_md', '') }}</textarea>
+          </label>
+        </fieldset>
+      {% endif %}
+      <div class="reflect-row">
+        <button type="submit" class="primary">Save response</button>
+        <a class="muted" href="/today/next">Next →</a>
+        <span class="autosave-status muted" data-autosave-status="response_md" aria-live="polite">
+          {% if refl.response_updated_at %}last saved {{ refl.response_updated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+        </span>
+      </div>
+    </form>
+  </section>
+</article>
+
+{% endblock %}

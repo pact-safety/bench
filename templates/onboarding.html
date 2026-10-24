@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Welcome — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="onboarding">
+  <header class="onboarding__head">
+    <h1>Welcome to Li's Bench</h1>
+    <p class="onboarding__lede">
+      A daily drill tool calibrated for the actual selection surface of
+      research-engineer roles at frontier labs, safety orgs, and
+      fellowships — paper-reproduction, debugging real ML code, the
+      occasional algo problem. Not generic FAANG SWE prep.
+    </p>
+    <p class="muted">
+      Onboarding here is about collecting a useful starting signal.
+      If you feel uncertain on a prompt, choose the uncertain option —
+      it helps record your starting point and does not affect an application outcome.
+      These answers do contribute to your starting scores.
+    </p>
+  </header>
+
+  <section class="onboarding__panel">
+    <h2>How a problem flows here</h2>
+    <p>
+      Every core problem is structured around
+      <strong>the five phases</strong> — a rhythm for
+      solving under uncertainty:
+    </p>
+    <ol class="onboarding__phases">
+      <li><span>Explore</span> — pin down the I/O, constraints, edge cases.</li>
+      <li><span>Brainstorm</span> — two or three approaches, with trade-offs.</li>
+      <li><span>Plan</span> — a paragraph-deep outline. The strongest single signal in interviews.</li>
+      <li><span>Implement</span> — write the code. Editor unlocks after the Plan section has content.</li>
+      <li><span>Verify</span> — properties, boundary cases, hand-traced inputs.</li>
+    </ol>
+    <p class="muted">
+      Warmups skip the scaffolding — they're intentionally low-ceremony.
+    </p>
+  </section>
+
+  <section class="onboarding__panel">
+    <h2>Pick your starting point</h2>
+    <p>
+      Choose a curriculum, start with an assessment, or try an easy
+      problem. A curriculum gives you a sequence to follow; the
+      assessment helps pick a starting problem; easy problems let
+      you begin practicing right away.
+    </p>
+
+    <div class="onboarding__paths">
+      <div class="onboarding__path">
+        <h3>Take the assessment</h3>
+        <p class="muted">
+          Up to ten multiple-choice questions, selected for topic coverage.
+          This brief snapshot does not cover every skill axis or measure interview readiness.
+          It seeds your starting profile and suggests a first problem
+          from the assessed axes. Retake any time from
+          <a href="/settings">Settings</a>.
+        </p>
+        <form method="post" action="/onboarding/start" class="onboarding__cta">
+          <button type="submit" class="primary">Start the assessment →</button>
+        </form>
+      </div>
+
+      <div class="onboarding__path">
+        <h3>Skip — ramp up with easy problems</h3>
+        <p class="muted">
+          The scheduler biases toward easy problems for your first 10
+          attempts, then graduates to mediums and hards as it learns
+          from your confidence ratings and pass/fail data. The
+          assessment is always available later if you want richer
+          signal sooner.
+        </p>
+        <form method="post" action="/onboarding/skip" class="onboarding__skip">
+          <button type="submit" class="bordered-button">Skip → start with easy problems</button>
+        </form>
+      </div>
+      <div class="onboarding__path">
+        <h3>Choose a curriculum</h3>
+        <p class="muted">
+          Browse tracks, see what each starts with, and choose one for
+          your current goal. Work in short sessions and return to your
+          saved progress. You can take the assessment later.
+        </p>
+        <form method="post" action="/onboarding/tracks" class="onboarding__cta">
+          <button type="submit" class="bordered-button">Choose a curriculum →</button>
+        </form>
+      </div>
+
+    </div>
+  </section>
+</article>
+
+{% endblock %}

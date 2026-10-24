@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Review section assessments — Li's Bench{% endblock %}
+{% block body %}
+{% set form = form or {} %}
+<article class="page learning-page">
+  <header class="page__head"><h1 class="page__title">Review section assessments</h1><p>Human review of the pilot rubric. Judge the submitted reasoning and evidence, not speaking style or confidence.</p></header>
+  {% if error %}<p role="alert" aria-live="polite">{{ error }}</p>{% endif %}
+  {% if form and not selected %}
+  <section class="page__section" aria-labelledby="review-draft-title">
+    <h2 id="review-draft-title">Your review draft</h2>
+    <p>The review could not be confirmed. Copy these submitted values before leaving, then reopen the submission after service recovery. Check whether the review was recorded before retrying.</p>
+    <dl>{% for field, value in form.items() %}{% if field == 'exam_version' or field.startswith('score_') or field.startswith('evidence_') %}<dt>{{ field }}</dt><dd class="saved-prose">{{ value }}</dd>{% endif %}{% endfor %}</dl>
+  </section>
+  {% endif %}
+  {% if queue %}<section class="page__section"><h2>Pending review</h2><ul>{% for item in queue %}<li><a href="/track-assessments/review?owner_id={{ item.user_id | urlencode }}&amp;attempt_id={{ item.id | urlencode }}">{{ item.track_slug }} · section {{ item.section_idx + 1 }} · {{ item.submitted_at }}</a></li>{% endfor %}</ul></section>{% elif not selected and not error %}<p>No submissions are waiting for review.</p>{% endif %}
+  {% if selected %}
+  <section class="page__section"><h2>{{ track.title }} — {{ section.title }}</h2>
+    <p>Response format: {{ selected.modality }} · assistance: {{ selected.assistance }}</p>
+    {% if selected.assistance != 'none' %}<p>Practice review only — cannot test out.</p>{% endif %}
+    {% if practical_gate and not practical_gate.passed %}<p role="status">Practical checks are incomplete or unavailable. Review cannot be finalized yet.</p>{% endif %}
+    <h3>Submitted response</h3><p class="saved-prose">{{ selected.responses.get('answers', '') }}</p>
+    {% if selected.responses.get('artifact_url') %}<p><a href="{{ selected.responses.artifact_url }}" target="_blank" rel="noopener">Supporting work</a></p>{% endif %}
+  </section>
+  {% if not spec or selected.spec_version != spec.version %}<p role="status">This submission belongs to an earlier assessment version. Its response is preserved; do not assess it against the current rubric.</p>
+  {% elif selected.state != 'pending' %}<p role="status">This review is already recorded. Decision: {{ selected.review.verdict | replace('_', ' ') }}.</p>
+  {% else %}
+  <section class="page__section"><h2>Questions and fresh application</h2><ol>{% for question in spec.questions %}<li>{{ question.prompt if question is mapping else question }}</li>{% endfor %}</ol></section>
+  <p>The provisional threshold is {{ spec.threshold }}% overall and at least 3/4 on every essential criterion. Assisted responses cannot grant an exemption. Practical tests, where required, are checked separately. This unproctored pilot is not certification.</p>
+  <form method="post" action="/track-assessments/{{ selected.user_id | urlencode }}/{{ selected.id | urlencode }}/review">
+    <input type="hidden" name="exam_version" value="{{ spec.version }}">
+    {% for criterion in spec.criteria %}
+      <fieldset class="page__section"><legend>{{ criterion.label }}{% if criterion.essential %} · essential{% endif %}</legend><p>{{ criterion.description }}</p>
+        <ul>{% for score, anchor in criterion.anchors | dictsort %}<li><strong>{{ score }}/4:</strong> {{ anchor }}</li>{% endfor %}</ul>
+        <div class="form-field"><label for="score-{{ criterion.id }}">Rating for {{ criterion.label }}</label><select id="score-{{ criterion.id }}" name="score_{{ criterion.id }}" required><option value=""{% if form.get('score_' ~ criterion.id, '') == '' %} selected{% endif %}>Choose an evidence-based rating</option>{% for score in range(5) %}<option value="{{ score }}"{% if form.get('score_' ~ criterion.id, '') | string == score | string %} selected{% endif %}>{{ score }}/4</option>{% endfor %}</select></div>
+        <div class="form-field"><label for="evidence-{{ criterion.id }}">Exact response excerpt for {{ criterion.label }}</label><textarea id="evidence-{{ criterion.id }}" name="evidence_{{ criterion.id }}" rows="3" maxlength="2000" required>{{ form.get('evidence_' ~ criterion.id, '') }}</textarea><p class="form-field__hint">Paste an exact excerpt from the submitted response that supports this rating, without adding commentary. Use the rating to reflect gaps or contradictions.</p></div>
+      </fieldset>
+    {% endfor %}
+    <button type="submit" class="btn btn--primary">Record human review</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</article>
+{% endblock %}

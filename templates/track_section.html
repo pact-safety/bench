@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ row.section.title }} — {{ track.title }} — Li's Bench{% endblock %}
+{% block body %}
+<article class="page page--track-detail learning-page">
+  <header class="page__head">
+    <p class="page__meta"><a href="/tracks/{{ track.slug }}#section-{{ row.idx }}">← Back to {{ track.title }}</a></p>
+    <h1 class="page__title">{{ row.section.title }}</h1>
+    <p class="page__meta">
+      <span class="badge">{{ row.section.kind | replace('external_', '') }}</span>
+      <span class="badge">{% if not is_available %}Pending audit{% elif row.exemption %}Tested out{% elif row.is_completed %}Done{% elif not row.is_unlocked %}Locked{% elif is_paused %}Paused{% elif row.is_current %}Next{% else %}Available{% endif %}</span>
+    </p>
+    {% if gate_blocked_title %}<p class="status-message" role="alert">Checkpoint blocked — <strong>{{ gate_blocked_title }}</strong> has not passed its tests yet.</p>{% endif %}
+  </header>
+  {% if not is_available %}
+    <section class="page__section">
+      <p role="status">Pending content audit. Your saved work is preserved. This track cannot be activated yet.</p>
+      <form method="post" action="/tracks/{{ track.slug }}/request"><button type="submit" class="bordered-button">Request this track</button></form>
+    </section>
+  {% elif not is_active %}
+    <p class="status-message">{% if is_paused %}This track is paused.{% else %}This track is not active.{% endif %} Your saved work is available below. <a href="/tracks/{{ track.slug }}">{% if is_paused %}Resume{% else %}Activate{% endif %} the track</a> to continue your practice check.</p>
+  {% endif %}
+  <section class="page__section learning-section__body" aria-label="Section work">
+    {% include '_track_section_work.html' %}
+  </section>
+  {% if is_active and is_available and (row.is_completed or row.exemption) and current_row and current_row.idx != row.idx %}
+  <section class="page__section next-action">
+    <h2 class="section-label">Your next step</h2>
+    <a class="btn btn--primary" href="{{ current_row.content_url }}">Continue to {{ current_row.section.title }} →</a>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

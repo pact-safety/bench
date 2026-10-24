@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Writing — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--writing-public">
+  <header class="page__head">
+    <h1 class="page__title">Writing</h1>
+    <p class="page__meta">
+      A curated set of architecture and development essays from this codebase.
+      Each piece lives on the docs site and captures a concrete design decision,
+      tradeoff, or operating pattern.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <div class="writing-public-grid">
+      {% for essay in essays %}
+        <article class="writing-public-card">
+          <h2 class="writing-public-card__title">{{ essay.title }}</h2>
+          <p class="writing-public-card__blurb">{{ essay.blurb }}</p>
+          <p class="writing-public-card__actions">
+            <a href="{{ essay.url }}" target="_blank" rel="noopener noreferrer">Read on docs →</a>
+          </p>
+          <p class="writing-public-card__updated">
+            Recently updated
+            <time datetime="{{ essay.updated_at }}">{{ essay.updated_at }}</time>
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+</article>
+
+{% endblock %}

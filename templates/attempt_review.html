@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Review — {{ problem.title }}{% endblock %}
+{% block body %}
+
+<article class="page">
+  <header class="page__head">
+    <h1 class="page__title">Review</h1>
+    <p class="page__meta">
+      <a href="/problem/{{ problem.slug }}">{{ problem.title }}</a> ·
+      attempt #{{ attempt.id }} ·
+      {{ attempt.started_at.strftime('%Y-%m-%d %H:%M UTC') }}
+    </p>
+  </header>
+
+  {% if attempt.cutoff %}
+    <div class="cutoff-banner" role="status">
+      <strong>Session ended at the cutoff.</strong>
+      Your work was auto-submitted when the timer hit zero.
+      The review below grades against what you had at that moment.
+    </div>
+  {% endif %}
+
+  {% set passed = attempt.test_passed %}
+  {% set output = attempt.test_output %}
+  {% include '_result.html' %}
+
+  {# Interview-mode v1: per-phase time-vs-budget breakdown. Hides
+     itself for legacy attempts that don't carry phase budgets (the
+     route handler returns an empty list then). #}
+  {% if phase_breakdown %}
+    <section class="page__section">
+      <h2 class="section-label">Time breakdown</h2>
+      <p class="page__meta">
+        How your minutes split across the Engineering Method phases vs.
+        the budget for this problem. Healthy attempts hover ±5pp; large
+        gaps are worth a reflection (over-implement at the cost of
+        plan, or vice versa).
+      </p>
+      <ul class="phase-breakdown">
+        {% for row in phase_breakdown %}
+          <li class="phase-breakdown__row phase-breakdown__row--{{ row.status }}">
+            <span class="phase-breakdown__phase">{{ row.phase }}</span>
+            <div class="phase-breakdown__bars">
+              <div class="phase-breakdown__bar phase-breakdown__bar--actual"
+                   style="width: {{ row.elapsed_pct }}%"
+                   title="Actual: {{ phase_budget_fmt(row.elapsed) }} ({{ row.elapsed_pct }}% of total)">
+              </div>
+              <div class="phase-breakdown__bar phase-breakdown__bar--budget"
+                   style="width: {{ row.budget_pct }}%"
+                   title="Budget: {{ phase_budget_fmt(row.budget) }} ({{ row.budget_pct }}% of total)">
+              </div>
+            </div>
+            <div class="phase-breakdown__nums">
+              <span class="phase-breakdown__elapsed">{{ phase_budget_fmt(row.elapsed) }}</span>
+              <span class="phase-breakdown__divider">/</span>
+              <span class="phase-breakdown__budget">{{ phase_budget_fmt(row.budget) }}</span>
+              <span class="phase-breakdown__status phase-breakdown__status--{{ row.status }}">
+                {{ row.status.replace('_', ' ') }}
+              </span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if content_before %}
+    <section class="page__section crosslink">
+      <h2 class="section-label">What you read before this</h2>
+      <p class="muted">Content you completed in the 7 days before this attempt, on an overlapping skill axis.</p>
+      <ul class="crosslink__list">
+        {% for row in content_before %}
+          <li class="crosslink-row">
+            <a href="/content/{{ row.content.slug }}" class="crosslink-row__title">{{ row.content.title }}</a>
+            <span class="muted crosslink-row__meta">
+              <span class="badge">{{ row.content.kind }}</span>
+              {% if row.delta_hours < 24 %}−{{ row.delta_hours }}h{% else %}−{{ (row.delta_hours / 24) | round(1) }}d{% endif %}
+              {% if row.rating_1_to_5 %}<span class="badge">{{ '★' * row.rating_1_to_5 }}</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

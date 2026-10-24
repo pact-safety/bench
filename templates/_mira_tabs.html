@@ -1,0 +1,23 @@
+{# 5a/6: MIRA section sub-nav, shared by chat + agenda/memory/evals.
+   Reuses the inbox tab grammar (.fb-tabs) rather than inventing a
+   Mira-only variant. Set `mira_tab` before including; the chat tab
+   deep-links to the current session when one is in context, else /mira.
+   Voice stays a non-link until v2.1 slice 4 (PTT); the title says why. #}
+<nav class="fb-tabs" aria-label="Mira sections">
+  <a class="fb-tab{% if mira_tab == 'chat' %} is-active{% endif %}"
+     {% if mira_tab == 'chat' %}aria-current="page"{% endif %}
+     href="{% if session is defined and session %}/mira/session/{{ session.id }}{% else %}/mira{% endif %}">Chat</a>
+  <a class="fb-tab{% if mira_tab == 'agenda' %} is-active{% endif %}"
+     {% if mira_tab == 'agenda' %}aria-current="page"{% endif %}
+     href="/mira/agenda">Agenda</a>
+  <a class="fb-tab{% if mira_tab == 'memory' %} is-active{% endif %}"
+     {% if mira_tab == 'memory' %}aria-current="page"{% endif %}
+     href="/mira/memory">Memory</a>
+  <a class="fb-tab{% if mira_tab == 'kb' %} is-active{% endif %}"
+     {% if mira_tab == 'kb' %}aria-current="page"{% endif %}
+     href="/mira/kb">KB</a>
+  <a class="fb-tab{% if mira_tab == 'evals' %} is-active{% endif %}"
+     {% if mira_tab == 'evals' %}aria-current="page"{% endif %}
+     href="/mira/evals">Evals</a>
+  <span class="fb-tab" aria-disabled="true" title="Voice lives in the chat — the mic on the composer talks, the Voice toggle reads replies aloud">Voice <span class="tag">in chat</span></span>
+</nav>

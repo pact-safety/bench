@@ -1,0 +1,63 @@
+{
+  "id": "/?source=pwa",
+  "name": "Li's Bench",
+  "short_name": "Bench",
+  "description": "Daily-driver interview prep — drill, ingest, produce, assess, connect. Single-tenant; the operator's research-engineer engine room.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#0A0B0D",
+  "theme_color": "#0A0B0D",
+  "orientation": "any",
+  "categories": ["productivity", "education"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pick a problem",
+      "short_name": "Drill",
+      "description": "Jump straight to the scheduler's next pick",
+      "url": "/today/next",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Focus",
+      "short_name": "Focus",
+      "description": "Initiatives dashboard — what's active, dormant, closed",
+      "url": "/focus",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Connect",
+      "short_name": "Connect",
+      "description": "Networking tracker — who's overdue for a reach-out",
+      "url": "/connecting",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Reflect",
+      "short_name": "Reflect",
+      "description": "Open the reflect surface",
+      "url": "/reflect",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

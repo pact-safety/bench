@@ -1,0 +1,30 @@
+{
+  "name": "bench-islands",
+  "private": true,
+  "type": "module",
+  "description": "FRONTEND-1a build seam: Vite + Svelte islands mounted into the Jinja shell. Dev-time only — the build emits static assets FastAPI serves; no Node in production.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run && node --test tests/unit/autosave.lifecycle.test.mjs tests/unit/feedback-widget.lifecycle.test.mjs tests/unit/connecting-confirmations.lifecycle.test.mjs tests/unit/track-exam.lifecycle.test.mjs tests/unit/resource-reader.lifecycle.test.mjs",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/markdown-it": "^14.1.2",
+    "jsdom": "^25.0.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/lang-rust": "^6.0.2",
+    "codemirror": "^6.0.2",
+    "markdown-it": "^14.3.0"
+  }
+}

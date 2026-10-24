@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block main_class %}container--narrow{% endblock %}
+{% block title %}Mira — agenda{% endblock %}
+{% block body %}
+
+<article class="page page--mira">
+  <div class="mira-surface">
+    <div class="mira-surface__head">
+      <span class="mira-surface__crumb">Connect › Mira › Agenda</span>
+      {% set mira_tab = 'agenda' %}
+      {% include "_mira_tabs.html" %}
+    </div>
+
+    <div class="mira-surface__body">
+      <div class="mira-surface__title-row">
+        <h1 class="mira-surface__title">Research agenda</h1>
+        {% if linear_connected and items %}
+          <form method="post" action="/mira/agenda/linear-refresh">
+            <button type="submit" class="muted-button"
+                    title="Pull issue states from Linear onto these items">
+              Refresh from Linear
+            </button>
+          </form>
+        {% endif %}
+      </div>
+      {% if linear_error %}
+        <p class="muted" role="alert"><strong>{{ linear_error }}</strong></p>
+      {% endif %}
+
+      {% if items %}
+        <ul class="mira-cardlist">
+          {% for item in items %}
+            <li class="mira-card">
+              <div class="mira-card__row">
+                {% set st = item.status or 'open' %}
+                <span class="mira-pill
+                  {%- if st in ('active', 'in progress') %} mira-pill--active
+                  {%- elif st in ('done', 'shipped') %} mira-pill--done
+                  {%- elif st == 'open' %} mira-pill--open{% endif %}">{{ st }}</span>
+                <span class="mira-card__title">{{ item.title }}</span>
+              </div>
+              {% if item.why %}
+                <p class="mira-card__desc">{{ item.why }}</p>
+              {% endif %}
+              <div class="mira-card__foot">
+                {% if item.kind %}<span class="mira-chip">{{ item.kind }}</span>{% endif %}
+                <span class="mira-card__meta">
+                  {{ item.created_at.strftime('%b %d, %Y') }}{% if item.due_at %} · due {{ item.due_at.strftime('%b %d') }}{% endif %}
+                </span>
+                {% if item.linear_issue_identifier %}
+                  <a class="mira-chip" href="{{ item.linear_issue_url }}"
+                     target="_blank" rel="noopener">{{ item.linear_issue_identifier }} ↗</a>
+                {% elif linear_connected %}
+                  <form method="post" action="/mira/agenda/{{ item.id }}/linear"
+                        style="margin-left: auto;">
+                    <button type="submit" class="muted-button"
+                            title="Create this as an issue in your Linear team">→ Linear</button>
+                  </form>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mira-surface__sub">
+          Nothing on the agenda yet — Mira adds items here as your
+          conversations surface them; you can too.
+        </p>
+      {% endif %}
+
+      <details class="mira-add">
+        <summary>+ Add an item</summary>
+        <form method="post" action="/mira/agenda">
+          <div class="form-field">
+            <label class="form-field__label" for="agenda-title">Title</label>
+            <input id="agenda-title" type="text" name="title" required
+                   placeholder="What's the question, experiment, or deadline?">
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="agenda-kind">Kind</label>
+            <select id="agenda-kind" name="kind">
+              {% for k in kinds %}
+                <option value="{{ k }}">{{ k }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="agenda-why">Why <span class="muted">(optional)</span></label>
+            <input id="agenda-why" type="text" name="why"
+                   placeholder="Why it matters / what it unblocks">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Add to agenda</button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </div>
+</article>
+
+{% endblock %}

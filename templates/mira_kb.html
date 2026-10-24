@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block main_class %}container--narrow{% endblock %}
+{% block title %}Mira — knowledge base{% endblock %}
+{% block body %}
+
+<article class="page page--mira">
+  <div class="mira-surface">
+    <div class="mira-surface__head">
+      <span class="mira-surface__crumb">Connect › Mira › KB</span>
+      {% set mira_tab = 'kb' %}
+      {% include "_mira_tabs.html" %}
+    </div>
+
+    <div class="mira-surface__body">
+      <div class="mira-surface__title-row">
+        <h1 class="mira-surface__title">Knowledge base</h1>
+      </div>
+
+      <p class="muted">
+        Import your Obsidian notes so you can search them here. Mira’s current
+        coaching preview helps you frame your own attempts and reflections; it
+        does not retrieve these notes or provide exercise answers. Imported notes
+        are scoped to your account.
+      </p>
+
+      {% if kb_error %}
+        <p class="muted" role="alert"><strong>{{ kb_error }}</strong></p>
+      {% endif %}
+      {% if upload_counts %}
+        <p class="muted" role="status">
+          Vault processed:
+          {{ upload_counts.get("ingested", "0") }} ingested ·
+          {{ upload_counts.get("unchanged", "0") }} unchanged ·
+          {{ upload_counts.get("failed", "0") }} failed.
+          {% if upload_counts.get("failed", "0") | int > 0 %}
+            Some notes could not be saved. Retry the same archive; completed notes
+            stay saved and incomplete notes are tried again.
+          {% endif %}
+        </p>
+      {% endif %}
+
+{% import "_bubbles.html" as b with context %}
+      {{ b.slot('upload') }}
+      <form method="post" action="/mira/kb/upload" enctype="multipart/form-data"
+            class="settings__form">
+        <label class="settings__field" for="vault-zip">
+          <strong>Upload vault (.zip)</strong>
+          <span class="muted">
+            In Obsidian: export or zip your vault folder. Markdown only;
+            .obsidian/ config is skipped. Re-uploads only re-process notes
+            that changed or need recovery. Folder paths distinguish same-named notes. Quota: {{ quota_docs }} notes / {{ quota_mb }}MB —
+            you're at {{ doc_count }} notes / {{ total_mb }}MB.
+          </span>
+          <input id="vault-zip" type="file" name="vault_zip" accept=".zip,application/zip" required>
+        </label>
+        <button type="submit" class="primary">Import vault</button>
+      </form>
+
+      <div class="mira-surface__title-row" style="margin-top: var(--space-5);">
+        <h2 class="mira-surface__title">Git sync</h2>
+      </div>
+      {% if git_cfg %}
+        <p class="mira-surface__sub">
+          Connected to <code>{{ git_cfg.repo }}</code>{% if git_cfg.branch %} @ <code>{{ git_cfg.branch }}</code>{% endif %}{% if git_cfg.subdir %} · <code>/{{ git_cfg.subdir }}</code>{% endif %}.
+          {% if git_cfg.last_synced_at %}
+            Last sync {{ git_cfg.last_synced_at.strftime('%b %d, %H:%M') }} UTC — {{ git_cfg.last_result or '—' }}.
+          {% else %}
+            Not synced yet.
+          {% endif %}
+          Pulls nightly; sync now any time.
+        </p>
+        <div style="display: inline-flex; gap: var(--space-3);">
+          <form method="post" action="/mira/kb/git/sync">
+            <button type="submit" class="btn btn--primary">Sync now</button>
+          </form>
+          <form method="post" action="/mira/kb/git/disconnect">
+            <button type="submit" class="muted-button"
+                    title="Removes the connection and its stored token; already-ingested notes stay">Disconnect</button>
+          </form>
+        </div>
+      {% else %}
+        <p class="mira-surface__sub">
+          Vault lives in a git repo? Connect it once — the bench pulls the
+          GitHub tarball nightly (and on demand) instead of you re-exporting
+          zips. Public repos need no token; private ones take a fine-grained
+          read token, stored encrypted (Supabase Vault).
+        </p>
+        <form method="post" action="/mira/kb/git/connect" class="settings__form">
+          <label class="settings__field" for="git-repo">
+            <strong>Repository</strong>
+            <input id="git-repo" type="text" name="repo" required
+                   placeholder="owner/vault-repo or https://github.com/owner/vault-repo">
+          </label>
+          <label class="settings__field" for="git-branch">
+            <strong>Branch <span class="muted">(optional — default branch if blank)</span></strong>
+            <input id="git-branch" type="text" name="branch" placeholder="main">
+          </label>
+          <label class="settings__field" for="git-subdir">
+            <strong>Folder <span class="muted">(optional — when the vault isn't at the repo root)</span></strong>
+            <input id="git-subdir" type="text" name="subdir" placeholder="vault">
+          </label>
+          <label class="settings__field" for="git-token">
+            <strong>Read token <span class="muted">(private repos only)</span></strong>
+            <input id="git-token" type="password" name="token"
+                   autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+          </label>
+          <button type="submit" class="primary">Connect and sync</button>
+        </form>
+      {% endif %}
+
+      <form method="get" action="/mira/kb" class="settings__form">
+        <label class="settings__field" for="kb-search">
+          <strong>Test retrieval</strong>
+          <span class="muted">Search your imported notes by keyword. This search is separate from Mira’s coaching preview.</span>
+          <input id="kb-search" type="search" name="q" value="{{ search_q }}" placeholder="e.g. KV cache memory growth">
+        </label>
+        <button type="submit" class="muted-button">Search</button>
+      </form>
+
+      {% if search_q %}
+        {% if hits %}
+          <ul class="mira-cardlist">
+            {% for h in hits %}
+              <li class="mira-card">
+                <div class="mira-card__row">
+                  <span class="mira-card__title">{{ h.document_title }}</span>
+                  {% if h.section_path %}<span class="mira-chip">{{ h.section_path }}</span>{% endif %}
+                </div>
+                <p class="mira-card__desc">{{ h.content[:400] }}{% if h.content|length > 400 %}…{% endif %}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">No notes matched <strong>{{ search_q }}</strong>.</p>
+        {% endif %}
+      {% endif %}
+
+      <div class="mira-surface__title-row">
+        <h2 class="mira-surface__title">Your notes ({{ doc_count }})</h2>
+      </div>
+      {% if docs %}
+        <ul class="mira-cardlist">
+          {% for d in docs %}
+            <li class="mira-card">
+              <div class="mira-card__row">
+                <span class="mira-card__title">{{ d.title }}</span>
+                <span class="mira-chip">{{ d.chunk_count }} chunks</span>
+              </div>
+              <div class="mira-card__foot">
+                <span class="mira-card__meta">
+                  {{ d.source_url.split('/', 3)[-1] }} ·
+                  {{ d.ingested_at.strftime('%b %d, %Y') if d.ingested_at else '—' }}
+                </span>
+                <form method="post" action="/mira/kb/delete/{{ d.id }}" style="margin-left: auto;">
+                  <button type="submit" class="muted-button">Remove</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No notes yet. Import your vault above — or start with a
+        single note's zip to see how retrieval works.</p>
+      {% endif %}
+    </div>
+  </div>
+</article>
+
+{% endblock %}

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today · prototype — Li's Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="./_prototype.css">
+</head>
+<body data-variants="A,B,C" data-surface="today">
+<div class="proto-banner">prototype · today · <a href="./">all surfaces</a></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT A — Palette-primary nav · Comfortable · Single-col   ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--A">
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav--palette" aria-label="Primary">
+        <a class="brand nav__brand" href="/">Li's Bench</a>
+        <span style="flex: 1"></span>
+        <button class="nav__palette-hint" type="button" aria-label="Open command palette">
+          <span>jump to anywhere</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+        <a class="header-icon" href="#" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#" title="Yesterday">←</a>
+        <span class="today__date">2026-05-28 · Thu</span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>research-engineer · Anthropic</strong> · <a href="#">readiness →</a> · <a href="#">manage JDs →</a></p>
+    </header>
+
+    <div class="layout--single-column">
+
+      <article class="proto-now-card">
+        <p class="proto-now-card__eyebrow">Now</p>
+        <h2 class="proto-now-card__title">Two-sum variants — interview mode</h2>
+        <p class="muted">15 min · <span class="badge">algo</span> <span class="badge">hashmap</span> · scheduler picked this based on yesterday's weak-axis (recall).</p>
+        <p style="margin-top: var(--space-4);"><a href="#" class="action-link">Start →</a> <a href="#" class="muted" style="margin-left: var(--space-4);">skip · pick another</a></p>
+      </article>
+
+      <section>
+        <h2 class="section-label">Today's picks</h2>
+        <div class="proto-section-stack">
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">reading</span>
+            <a class="proto-row__title" href="#">Deep RL — function approximation (Sutton ch. 9)</a>
+            <span class="proto-row__meta">25 min</span>
+          </div>
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">writing</span>
+            <a class="proto-row__title" href="#">Daily draft — seeded from yesterday's reflect</a>
+            <span class="proto-row__meta">15 min</span>
+          </div>
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">warmup</span>
+            <a class="proto-row__title" href="#">Sliding-window maximum (drill, no review)</a>
+            <span class="proto-row__meta">10 min</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-label">Active work</h2>
+        <div class="proto-section-stack">
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">initiative</span>
+            <a class="proto-row__title" href="#">Anthropic research-engineer prep — 3 attempts last 7d · target Aug 15</a>
+            <span class="proto-row__meta">priority 1</span>
+          </div>
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">initiative</span>
+            <a class="proto-row__title" href="#">Consulting launch — landing page draft due Friday</a>
+            <span class="proto-row__meta">priority 2</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-label">Recent</h2>
+        <div class="proto-section-stack">
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">attempt</span>
+            <span class="proto-row__title">Kadane's algorithm — passed, 12m</span>
+            <span class="proto-row__meta">yesterday 22:14</span>
+          </div>
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">reflect</span>
+            <a class="proto-row__title" href="#">Yesterday's session — 3 attempts, 1 reflect</a>
+            <span class="proto-row__meta">yesterday 22:30</span>
+          </div>
+          <div class="proto-row">
+            <span class="proto-row__eyebrow">content</span>
+            <a class="proto-row__title" href="#">Anthropic eng blog — capacity planning</a>
+            <span class="proto-row__meta">2 days ago</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Faux palette overlay — would open on ⌘K. Shown unhidden here so
+       the operator can see what the discovery surface looks like. -->
+  <div class="proto-palette" aria-label="Command palette (mock)">
+    <input class="proto-palette__input" type="text" placeholder="Type a command or route…" value="prob">
+    <ul class="proto-palette__list">
+      <li class="proto-palette__item is-active"><span>/problem · pick a problem to solve</span><kbd>↵</kbd></li>
+      <li class="proto-palette__item"><span>/problem/two-sum-variants · interview mode</span><kbd>⌘↵</kbd></li>
+      <li class="proto-palette__item"><span>/library · stack of readings + videos</span><kbd>↵</kbd></li>
+      <li class="proto-palette__item"><span>/writings · draft surface</span><kbd>↵</kbd></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT B — Visible-rail nav · Comfortable · Two-column      ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--B">
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Li's Bench</a>
+      <nav class="header-nav" aria-label="Primary">
+        <a class="header-nav__link is-active" href="#">Drill</a>
+        <a class="header-nav__link" href="#">Learn</a>
+        <a class="header-nav__link" href="#">Tracks</a>
+        <a class="header-nav__link" href="#">Reflect</a>
+        <a class="header-nav__link" href="#">Write</a>
+        <a class="header-nav__link" href="#">Aim</a>
+        <a class="header-nav__link" href="#">Focus</a>
+        <a class="header-nav__link" href="#">Decisions</a>
+        <a class="header-nav__link" href="#">News</a>
+      </nav>
+      <div class="header-controls">
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#" title="Yesterday">←</a>
+        <span class="today__date">2026-05-28 · Thu</span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>research-engineer · Anthropic</strong> · <a href="#">readiness →</a></p>
+    </header>
+
+    <div class="layout--two-column">
+      <div>
+        <article class="proto-now-card">
+          <p class="proto-now-card__eyebrow">Now</p>
+          <h2 class="proto-now-card__title">Two-sum variants — interview mode</h2>
+          <p class="muted">15 min · <span class="badge">algo</span> <span class="badge">hashmap</span> · scheduler picked this based on yesterday's weak-axis (recall).</p>
+          <p style="margin-top: var(--space-4);"><a href="#" class="action-link">Start →</a> <a href="#" class="muted" style="margin-left: var(--space-4);">skip · pick another</a></p>
+        </article>
+
+        <section style="margin-top: var(--space-6);">
+          <h2 class="section-label">Today's picks</h2>
+          <div class="proto-section-stack">
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">reading</span>
+              <a class="proto-row__title" href="#">Deep RL — function approximation (Sutton ch. 9)</a>
+              <span class="proto-row__meta">25 min</span>
+            </div>
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">writing</span>
+              <a class="proto-row__title" href="#">Daily draft — seeded from yesterday's reflect</a>
+              <span class="proto-row__meta">15 min</span>
+            </div>
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">warmup</span>
+              <a class="proto-row__title" href="#">Sliding-window maximum (drill, no review)</a>
+              <span class="proto-row__meta">10 min</span>
+            </div>
+          </div>
+        </section>
+
+        <section style="margin-top: var(--space-6);">
+          <h2 class="section-label">Recent</h2>
+          <div class="proto-section-stack">
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">attempt</span>
+              <span class="proto-row__title">Kadane's algorithm — passed, 12m</span>
+              <span class="proto-row__meta">yesterday 22:14</span>
+            </div>
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">reflect</span>
+              <a class="proto-row__title" href="#">Yesterday's session — 3 attempts, 1 reflect</a>
+              <span class="proto-row__meta">yesterday 22:30</span>
+            </div>
+            <div class="proto-row">
+              <span class="proto-row__eyebrow">content</span>
+              <a class="proto-row__title" href="#">Anthropic eng blog — capacity planning</a>
+              <span class="proto-row__meta">2 days ago</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="layout--two-column__rail">
+        <section class="aim-stand__evidence">
+          <h3 class="section-label" style="margin-top: 0;">Active initiatives</h3>
+          <p style="margin: 0 0 var(--space-3);"><strong>Anthropic research-engineer prep</strong><br><span class="muted">3 attempts · target Aug 15 · priority 1</span></p>
+          <p style="margin: 0;"><strong>Consulting launch</strong><br><span class="muted">landing page due Fri · priority 2</span></p>
+        </section>
+        <section class="aim-stand__evidence">
+          <h3 class="section-label" style="margin-top: 0;">7-day signal</h3>
+          <p style="margin: 0;">12 attempts · 4 reflects · 6 content done<br><span class="muted">streak: 8 days</span></p>
+        </section>
+        <section class="aim-stand__evidence">
+          <h3 class="section-label" style="margin-top: 0;">Weak axis</h3>
+          <p style="margin: 0;"><strong>Recall</strong> · 58%<br><span class="muted">Scheduler is biased toward this today.</span></p>
+        </section>
+      </aside>
+    </div>
+  </main>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT C — Hybrid nav · Compact · Four-card grid            ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--C">
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Li's Bench</a>
+      <nav class="nav--hybrid" aria-label="Primary">
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Prep</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Problem</a>
+            <a class="nav__group-link" href="#">Warmup</a>
+            <a class="nav__group-link" href="#">Voices</a>
+            <a class="nav__group-link" href="#">Library</a>
+            <a class="nav__group-link" href="#">News</a>
+          </div>
+        </div>
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Make</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Writings</a>
+            <a class="nav__group-link" href="#">Decisions</a>
+            <a class="nav__group-link" href="#">Reflect</a>
+          </div>
+        </div>
+        <div class="nav__group">
+          <button class="nav__group-trigger" type="button">Assess</button>
+          <div class="nav__group-dropdown">
+            <a class="nav__group-link" href="#">Skills</a>
+            <a class="nav__group-link" href="#">Readiness</a>
+            <a class="nav__group-link" href="#">Credentials</a>
+            <a class="nav__group-link" href="#">JDs</a>
+            <a class="nav__group-link" href="#">Focus</a>
+          </div>
+        </div>
+        <span style="flex: 1"></span>
+        <button class="nav__palette-hint" type="button">
+          <span>jump to</span>
+          <kbd>⌘K</kbd>
+        </button>
+      </nav>
+      <div class="header-controls">
+        <a class="header-icon" href="#" aria-label="Feedback inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#" title="Yesterday">←</a>
+        <span class="today__date">2026-05-28 · Thu</span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title" style="font-size: var(--text-2xl);">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>research-engineer · Anthropic</strong></p>
+    </header>
+
+    <div class="layout--grid-4">
+      <article class="proto-card" style="grid-column: 1 / -1; border-left: 3px solid var(--accent);">
+        <p class="proto-now-card__eyebrow">Now</p>
+        <h2 style="margin: 0 0 var(--space-2); font-size: var(--text-lg);">Two-sum variants — interview mode</h2>
+        <p class="muted" style="margin: 0;">15 min · <span class="badge">algo</span> <span class="badge">hashmap</span></p>
+        <p style="margin: var(--space-2) 0 0;"><a href="#" class="action-link">Start →</a></p>
+      </article>
+
+      <article class="proto-card">
+        <p class="proto-now-card__eyebrow">Today's picks</p>
+        <div class="proto-section-stack">
+          <div class="proto-row" style="grid-template-columns: auto 1fr;">
+            <span class="proto-row__eyebrow">reading</span>
+            <a href="#" style="font-size: var(--text-sm);">Sutton ch. 9 · 25m</a>
+          </div>
+          <div class="proto-row" style="grid-template-columns: auto 1fr;">
+            <span class="proto-row__eyebrow">writing</span>
+            <a href="#" style="font-size: var(--text-sm);">Daily draft · 15m</a>
+          </div>
+          <div class="proto-row" style="grid-template-columns: auto 1fr;">
+            <span class="proto-row__eyebrow">warmup</span>
+            <a href="#" style="font-size: var(--text-sm);">Sliding-window max · 10m</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="proto-card">
+        <p class="proto-now-card__eyebrow">Active</p>
+        <p style="margin: 0 0 var(--space-2); font-size: var(--text-sm);"><strong>Anthropic prep</strong> · <span class="muted">target Aug 15 · p1</span></p>
+        <p style="margin: 0; font-size: var(--text-sm);"><strong>Consulting launch</strong> · <span class="muted">Fri · p2</span></p>
+      </article>
+
+      <article class="proto-card">
+        <p class="proto-now-card__eyebrow">Recent</p>
+        <p style="margin: 0 0 var(--space-2); font-size: var(--text-sm);">Kadane's · passed, 12m · <span class="muted">22:14</span></p>
+        <p style="margin: 0 0 var(--space-2); font-size: var(--text-sm);"><a href="#">Yesterday's session</a> · <span class="muted">3 att, 1 reflect</span></p>
+        <p style="margin: 0; font-size: var(--text-sm);"><a href="#">Capacity planning</a> · <span class="muted">2d ago</span></p>
+      </article>
+
+      <article class="proto-card">
+        <p class="proto-now-card__eyebrow">Signal</p>
+        <p style="margin: 0 0 var(--space-2); font-size: var(--text-sm);"><strong>12 attempts</strong> · <span class="muted">7d</span></p>
+        <p style="margin: 0 0 var(--space-2); font-size: var(--text-sm);"><strong>Streak 8d</strong></p>
+        <p style="margin: 0; font-size: var(--text-sm);">Weak axis: <strong>recall</strong> 58%</p>
+      </article>
+    </div>
+  </main>
+</section>
+
+<script src="./_switcher.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ jd.title | jd_title }} — JD — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--jd-detail">
+  <header class="page__head">
+    <p class="page__meta"><a href="{{ back_to_aim_url or '/aim#aim' }}">← Back to Aim</a></p>
+    <h1 class="page__title">{{ jd.title | jd_title }}</h1>
+    {% if jd.org %}<p class="page__meta">{{ jd.org }}</p>{% endif %}
+    <p class="page__meta">
+      {% if is_active %}<span class="badge badge--em">active</span>{% endif %}
+      <span class="muted">{{ jd.method }}{% if jd.model_used %} · {{ jd.model_used }}{% endif %}</span>
+    </p>
+  </header>
+
+  {% if jd.summary %}
+    <section class="page__section">
+      <p class="jd-summary">{{ jd.summary }}</p>
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    <h2 class="section-label">Axis emphasis</h2>
+    <div class="axis-grid">
+      {% for axis, label in axis_labels.items() %}
+        {% set v = jd.axis_weights.get(axis, 0.0) %}
+        {% set pct = (v * 100) | round | int %}
+        {% if v >= 0.66 %}{% set tier = "strong" %}{% elif v >= 0.33 %}{% set tier = "mid" %}{% else %}{% set tier = "weak" %}{% endif %}
+        <div class="axis-row axis-row--{{ tier }}">
+          <span class="axis-row__name">{{ label }}</span>
+          <span class="axis-row__bar"><span class="axis-row__fill" style="width: {{ pct }}%;"></span></span>
+          <span class="axis-row__pct">{{ pct }}%</span>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if jd.signal_tags %}
+    <section class="page__section">
+      <h2 class="section-label">Signal tags</h2>
+      <p>
+        {% for t in jd.signal_tags %}<span class="tag tag--axis">{{ t }}</span> {% endfor %}
+      </p>
+    </section>
+  {% endif %}
+
+  {% if jd.iac_profile %}
+    <section class="page__section">
+      <h2 class="section-label">Role profile (iterator / amplifier / connector)</h2>
+      {% if user_iac %}
+        {# Side-by-side: JD wants vs you bring. Strong overlap marker on
+           any role where both sides are >= 0.4 and within 0.2 of each other. #}
+        <div class="iac-grid iac-grid--paired">
+          <div class="iac-col">
+            <h3 class="iac-col__title">This role wants</h3>
+            {% for key in iac_keys %}
+              {% set v = jd.iac_profile.get(key, 0.0) %}
+              {% set pct = (v * 100) | round | int %}
+              <div class="iac-row">
+                <span class="iac-row__name">{{ iac_labels.get(key, key) }}</span>
+                <span class="iac-row__bar"><span class="iac-row__fill" style="width: {{ pct }}%;"></span></span>
+                <span class="iac-row__pct">{{ pct }}%</span>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="iac-col">
+            <h3 class="iac-col__title">You bring</h3>
+            {% for key in iac_keys %}
+              {% set u = user_iac.get(key, 0.0) %}
+              {% set j = jd.iac_profile.get(key, 0.0) %}
+              {% set pct = (u * 100) | round | int %}
+              {% set overlap = (u >= 0.4 and j >= 0.4 and (u - j) | abs <= 0.2) %}
+              <div class="iac-row{% if overlap %} iac-row--overlap{% endif %}">
+                <span class="iac-row__name">{{ iac_labels.get(key, key) }}</span>
+                <span class="iac-row__bar"><span class="iac-row__fill" style="width: {{ pct }}%;"></span></span>
+                <span class="iac-row__pct">{{ pct }}%</span>
+                {% if overlap %}<span class="iac-row__overlap muted">strong overlap</span>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% if iac_fit_md %}
+          <p class="iac-fit"><strong>Fit:</strong> {{ iac_fit_md }}</p>
+        {% endif %}
+      {% else %}
+        <div class="iac-grid iac-grid--solo">
+          <div class="iac-col">
+            <h3 class="iac-col__title">This role wants</h3>
+            {% for key in iac_keys %}
+              {% set v = jd.iac_profile.get(key, 0.0) %}
+              {% set pct = (v * 100) | round | int %}
+              <div class="iac-row">
+                <span class="iac-row__name">{{ iac_labels.get(key, key) }}</span>
+                <span class="iac-row__bar"><span class="iac-row__fill" style="width: {{ pct }}%;"></span></span>
+                <span class="iac-row__pct">{{ pct }}%</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <p class="muted">
+          Upload your CV on <a href="/aim#evidence">Aim · Your evidence</a> to see how
+          your iterator/amplifier/connector mix lines up with this role.
+        </p>
+      {% endif %}
+      {% if jd.iac_evidence_md %}
+        <details class="iac-evidence">
+          <summary class="muted">why these JD scores</summary>
+          <pre class="jd-source">{{ jd.iac_evidence_md }}</pre>
+        </details>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="page__section jd-detail__actions">
+    {% if not is_active %}
+      <form method="post" action="/jds/{{ jd.id }}/activate" style="display:inline">
+        <button type="submit" class="primary">Make active</button>
+      </form>
+    {% else %}
+      <form method="post" action="/jds/clear-active" style="display:inline">
+        <button type="submit" class="muted-button">Deactivate</button>
+      </form>
+    {% endif %}
+    <form method="post" action="/jds/{{ jd.id }}/archive" style="display:inline; margin-left: var(--space-3)">
+      <button type="submit" class="muted-button">Archive</button>
+    </form>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Source text</h2>
+    <details>
+      <summary class="muted">show ({{ jd.source_text | length }} chars)</summary>
+      <pre class="jd-source">{{ jd.source_text }}</pre>
+    </details>
+  </section>
+</article>
+
+{% endblock %}

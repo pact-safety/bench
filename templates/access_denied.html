@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Not authorized — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--access-denied">
+  <header class="page__head">
+    <h1 class="page__title">Not authorized</h1>
+    <p class="page__meta">
+      This bench is a single-tenant tool. Your sign-in succeeded
+      ({% if email %}<code>{{ email }}</code>{% else %}anonymous{% endif %}),
+      but your identity isn't on the access list for this deployment.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <p>
+      Bench is in alpha and invite-only while the surface stabilizes.
+      If you'd like to try it,
+      <a class="action-link" href="/request-access?email={{ email or '' }}">request access</a>
+      — include a line about what brings you here and Li will follow
+      up.
+    </p>
+    <p class="muted">
+      If you're the operator and just need to add yourself, set
+      <code>LIS_ALLOWED_USER_IDS</code> or <code>LIS_ALLOWED_EMAILS</code>
+      in your deploy env (see
+      <a class="action-link" href="https://github.com/LiBearden/research-engineer-interview-prep/blob/main/docs/development/deploy.md">the deploy guide</a>).
+      You've been signed out; the cookies are gone.
+    </p>
+    <p>
+      <a class="primary-link" href="/login">Back to sign-in</a>
+    </p>
+    <p class="muted">Curious what this is? <a href="https://docs.libearden.dev/">Read the project docs.</a></p>
+  </section>
+</article>
+
+{% endblock %}

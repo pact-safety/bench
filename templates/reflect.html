@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Reflect — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--reflect">
+  <header class="page__head">
+    <h1 class="page__title">Reflect</h1>
+    <p class="page__meta">
+      Hamming-style weekly review. Pulls the last {{ window_days }} days of
+      attempts, content, writings, and hint use; Claude writes 3-5
+      specific prompts you reply to in writing. Anti-sycophancy by
+      design — if you didn't show up, the prompts will say so.
+    </p>
+  </header>
+
+  {% if not latest and week.attempts == 0 and week.content_finished == 0 %}
+    <section class="page__section reflect__first-time">
+      <h2 class="section-label">First reflection?</h2>
+      <p>
+        Your activity log is empty so far — there's not much for Claude
+        to write a Hamming retrospective <em>about</em>. Hamming framing
+        assumes a track of recent work to look back on; on no data, the
+        prompts will be generic.
+      </p>
+      <p>Three options:</p>
+      <ul>
+        <li>
+          <strong>Skip for now.</strong> Come back after attempting a
+          problem or finishing a reading. The Sunday-evening rhythm is
+          the intended cadence; mid-week reflections are optional.
+        </li>
+        <li>
+          <strong>Generate anyway.</strong> The canned 3-question
+          fallback gives you something to think through without
+          fabricating a retrospective on no data. The button below
+          works.
+        </li>
+        <li>
+          <strong>Read the framing first.</strong>
+          <a href="/library?type=reading" class="action-link">
+            Hamming foundations is in the library
+          </a> — explains why these prompts ask what they ask.
+        </li>
+      </ul>
+    </section>
+  {% endif %}
+
+  <section class="page__section reflect__week-card">
+    <h2 class="section-label">This week, in numbers</h2>
+    <ul class="reflect__stats">
+      <li><strong>{{ week.attempts }}</strong> attempts · <strong>{{ week.attempts_passed }}</strong> passed</li>
+      {% if week.attempts %}
+        <li><strong>{{ week.attempts_with_hints }}</strong> used the hint ladder · <strong>{{ week.attempts_with_lookup }}</strong> peeked at the reference</li>
+      {% endif %}
+      {% if week.avg_confidence is not none %}
+        <li>avg confidence <strong>{{ '%.1f' | format(week.avg_confidence) }}</strong> / 5</li>
+      {% endif %}
+      <li><strong>{{ week.content_finished }}</strong> content items finished</li>
+      {% if week.writings_drafted or week.writings_published %}
+        <li><strong>{{ week.writings_drafted }}</strong> writings drafted · <strong>{{ week.writings_published }}</strong> published</li>
+      {% endif %}
+      {% if week.weakest_axes %}
+        <li>weakest pass rate: {% for tag, rate in week.weakest_axes %}<span class="tag">{{ tag }} {{ '%.0f%%' | format(rate * 100) }}</span>{% endfor %}</li>
+      {% endif %}
+    </ul>
+    <form
+      method="post"
+      action="/reflect/generate"
+      class="reflect__gen"
+      id="reflect-gen-form"
+      hx-post="/reflect/generate"
+      hx-swap="none"
+      hx-indicator="#reflect-gen-indicator"
+      hx-disabled-elt="#reflect-gen-btn"
+      hx-on::before-request="var btn = document.getElementById('reflect-gen-btn'); if (btn) btn.setAttribute('aria-busy', 'true');"
+      hx-on::after-request="var btn = document.getElementById('reflect-gen-btn'); if (btn) btn.setAttribute('aria-busy', 'false'); if (event.detail.successful && event.detail.xhr && event.detail.xhr.responseURL) { window.location.href = event.detail.xhr.responseURL; }"
+      hx-on::response-error="var btn = document.getElementById('reflect-gen-btn'); if (btn) btn.setAttribute('aria-busy', 'false');"
+    >
+      <button type="submit" class="primary" id="reflect-gen-btn" aria-busy="false">Generate this week's prompts</button>
+      <span
+        class="reflect__gen-indicator htmx-indicator"
+        id="reflect-gen-indicator"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="reflect__gen-skeleton" aria-hidden="true">
+          <span class="reflect__gen-skeleton-line reflect__gen-skeleton-line--lg"></span>
+          <span class="reflect__gen-skeleton-line reflect__gen-skeleton-line--md"></span>
+          <span class="reflect__gen-skeleton-line reflect__gen-skeleton-line--sm"></span>
+          <span class="reflect__gen-skeleton-line reflect__gen-skeleton-line--xs"></span>
+        </span>
+        <span class="muted reflect__gen-indicator-copy">Sonnet is thinking…</span>
+      </span>
+      <span class="muted">
+        {% if has_api_key %}
+          Sonnet writes them based on the data above.
+        {% else %}
+          No <code>ANTHROPIC_API_KEY</code> set — you'll get the canned 3-question Hamming fallback.
+        {% endif %}
+      </span>
+    </form>
+  </section>
+
+  {% if latest %}
+    <section class="page__section">
+      <h2 class="section-label">Latest reflection</h2>
+      <div class="reflect-card">
+        <header class="reflect-card__head">
+          <span class="muted">{{ latest.generated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+          <span class="badge">{{ latest.method }}{% if latest.model_used %} · {{ latest.model_used }}{% endif %}</span>
+        </header>
+        {% if latest.summary_md %}<p class="reflect-card__summary">{{ latest.summary_md }}</p>{% endif %}
+        <p><a class="action-link" href="/reflect/{{ latest.id }}">Open →</a></p>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if history %}
+    <section class="page__section">
+      <h2 class="section-label">Earlier</h2>
+      <ul class="reflect__history">
+        {% for r in history %}
+          <li>
+            <a href="/reflect/{{ r.id }}">{{ r.generated_at.strftime('%Y-%m-%d') }}</a>
+            {% if r.summary_md %}<span class="muted">— {{ r.summary_md[:140] }}{% if r.summary_md | length > 140 %}…{% endif %}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

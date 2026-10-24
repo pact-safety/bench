@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block main_class %}mira-console-main{% endblock %}
+{% block title %}Mira — research mentor{% endblock %}
+{% block body %}
+
+<article class="page page--mira mira-console" data-mira-session="{{ session.id }}">
+  {% set mira_tab = 'chat' %}
+  {% include "_mira_tabs.html" %}
+
+  <div class="mira-console__frame">
+    <div class="mira-console__grid">
+
+      {# ── left: session rail ─────────────────────────────────────── #}
+      <aside class="mira-rail mira-rail--sessions" aria-label="Conversations">
+        <a class="mira-newconv" href="/mira">+ New conversation</a>
+        <div class="mira-rail__label">Conversations</div>
+        {% for s in recent_sessions %}
+          <a class="mira-sess {{ 'is-active' if s.id == session.id else '' }}"
+             href="/mira/session/{{ s.id }}"
+             {% if s.id == session.id %}aria-current="page"{% endif %}>
+            <span class="mira-sess__title">
+              {{ s.title or (s.started_at.strftime('%b %d, %H:%M') if s.started_at else 'Conversation') }}
+            </span>
+            {% if s.started_at %}
+              <span class="mira-sess__meta">{{ s.started_at.strftime('%b %d') }}</span>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </aside>
+
+      {# ── center: conversation ───────────────────────────────────── #}
+      <div class="mira-conv">
+        <header class="mira-conv__head">
+          <p class="eyebrow">Research mentor</p>
+          <div class="mira-conv__title-row">
+            <h1 class="mira-conv__title">Mira</h1>
+            <span class="mira-status-dot" aria-hidden="true"></span>
+            <span class="mira-status">online</span>
+          </div>
+          <p class="mira-conv__sub">
+            Open-ended research advising — taste, critique, eval design.
+            Short, specific, honest.
+          </p>
+        </header>
+
+        {% if mira_resting %}
+          {# 6e: spend-cap banner. Informational only — the composer stays
+             live because offline turns don't hit the API. Sits OUTSIDE the
+             island mount so hydration can't swallow it. #}
+          <aside class="warmup-banner" role="status">
+            Mira is resting — today's token budget is spent. Messages still
+            save, and they'll reply with the offline coach until the budget
+            resets at midnight ({{ mira_reset_tz or 'UTC' }}).
+            <a href="/mira/agenda">Review the agenda →</a>
+          </aside>
+        {% endif %}
+
+        {# FRONTEND-1d: mira-chat island (markdown + [cite:] chips + the
+           lifted SSE reader). Everything inside the mount div is the
+           fallback: the server transcript + the inline vanilla reader
+           below, unchanged. #}
+        <div class="mira-conv__body"
+             data-island="mira-chat"
+             data-props='{{ {"session_id": session.id, "turns": turns_json} | tojson }}'>
+          {# Live region so streamed tokens are announced to assistive tech.
+             polite = don't interrupt; the whole transcript is the region. #}
+{% import "_bubbles.html" as b with context %}
+          {{ b.slot('console') }}
+          <div id="mira-transcript" class="mira-transcript" aria-live="polite"
+               aria-label="Conversation with Mira" tabindex="0">
+            {% for turn in turns %}
+              {% if turn.role in ('user', 'assistant') %}
+                <div class="mira-msg mira-msg--{{ turn.role }}">
+                  <span class="mira-msg__who">{{ 'You' if turn.role == 'user' else 'Mira' }}</span>
+                  {% if turn.role == 'assistant' %}
+                    <div class="mira-msg__body">{{ turn.content | markdown }}</div>
+                  {% else %}
+                    <div class="mira-msg__body mira-msg__body--plain">{{ turn.content }}</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            {% if not turns %}
+              <p class="mira-empty">
+                Ask Mira about an eval design, a paper, a research direction, or
+                what to ship this week. They'll push back, ask the sharp question,
+                and point at the specific thing that moves evidence.
+              </p>
+            {% endif %}
+          </div>
+
+          <form id="mira-form" class="mira-composer" autocomplete="off">
+            <label class="visually-hidden" for="mira-message">Message to Mira</label>
+            {# v2.1 voice PTT: data-voice-note reuses the shipped dictation
+               path (MediaRecorder → /api/transcribe, spend-capped) — the
+               same reason recitation doesn't use the Web Speech API. #}
+            <textarea id="mira-message" name="message" rows="2" data-voice-note
+                      data-voice-note-label="Talk to Mira"
+                      placeholder="What's the cheapest experiment that distinguishes this from the obvious alternative?"></textarea>
+            <div class="mira-composer__row">
+              <span class="mira-composer__hint">they push back — that's the point</span>
+              {# Spoken replies: browser-native speechSynthesis, opt-in,
+                 default off (auto-speaking fights screen readers). The
+                 preference is server-side like every other toggle. #}
+              <button type="button" class="btn btn--ghost mira-speak" id="mira-speak"
+                      aria-pressed="{{ 'true' if speak_replies else 'false' }}"
+                      aria-label="Read Mira's replies aloud"
+                      title="Read Mira's replies aloud (browser voice)">
+                {{ 'Read aloud: on' if speak_replies else 'Read aloud: off' }}
+              </button>
+              <button type="submit" class="btn btn--primary" id="mira-send">Send</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# ── right: agenda + working memory ─────────────────────────── #}
+      <aside class="mira-rail mira-rail--context" aria-label="Research context">
+        <div class="mira-ctx">
+          <div class="mira-rail__label">Research agenda</div>
+          {% if mira_agenda %}
+            <div class="mira-ctx__list">
+              {% for a in mira_agenda %}
+                <div class="mira-ctx-card">
+                  <span class="mira-ctx-card__title">{{ a.title }}</span>
+                  <span class="mira-ctx-card__meta">
+                    {{ a.status or a.kind }}{% if a.kind and a.status %} · {{ a.kind }}{% endif %}
+                  </span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="mira-ctx__empty">
+              Nothing yet — <a href="/mira/agenda">open the agenda →</a>
+            </p>
+          {% endif %}
+        </div>
+
+        <div class="mira-ctx">
+          <div class="mira-rail__label">Working memory</div>
+          {% if mira_memory %}
+            <div class="mira-ctx__list">
+              {% for m in mira_memory %}
+                <div class="mira-ctx-item">{{ m.content }}</div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="mira-ctx__empty">
+              Nothing remembered yet — <a href="/mira/memory">open memory →</a>
+            </p>
+          {% endif %}
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</article>
+
+{# Streaming reader. POST + body rules out the htmx SSE extension
+   (EventSource is GET-only), so a small fetch-reader parses the
+   text/event-stream frames and appends deltas live. Small inline
+   vanilla JS, per the no-SPA constraint. Degrades gracefully: a fetch
+   failure leaves the saved message and shows an offline note. #}
+<script>
+(function () {
+  var form = document.getElementById('mira-form');
+  if (!form || !window.fetch) return;
+  var article = document.querySelector('.page--mira');
+  var sessionId = article.getAttribute('data-mira-session');
+  var transcript = document.getElementById('mira-transcript');
+  var input = document.getElementById('mira-message');
+  var sendBtn = document.getElementById('mira-send');
+
+  function addMessage(who, role, streaming) {
+    var empty = transcript.querySelector('.mira-empty');
+    if (empty) empty.remove();
+    var wrap = document.createElement('div');
+    wrap.className = 'mira-msg mira-msg--' + role;
+    var whoEl = document.createElement('span');
+    whoEl.className = 'mira-msg__who';
+    whoEl.textContent = who;
+    var body = document.createElement('div');
+    body.className = 'mira-msg__body mira-msg__body--plain' + (streaming ? ' is-streaming' : '');
+    wrap.appendChild(whoEl);
+    wrap.appendChild(body);
+    transcript.appendChild(wrap);
+    return body;
+  }
+
+  function scrollDown() { transcript.scrollTop = transcript.scrollHeight; }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+
+    var userBody = addMessage('You', 'user', false);
+    userBody.textContent = text;
+    var miraBody = addMessage('Mira', 'assistant', true);
+    scrollDown();
+
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.setAttribute('aria-busy', 'true');
+
+    var fd = new FormData();
+    fd.append('session_id', sessionId);
+    fd.append('message', text);
+
+    function finish() {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      sendBtn.removeAttribute('aria-busy');
+      input.focus();
+      scrollDown();
+      speakReply();
+    }
+
+    // ── Spoken replies (v2.1 voice PTT) ─────────────────────────────
+    // Browser-native TTS, opt-in via the server-side toggle. The
+    // transcript stays the canonical record; audio is additive.
+    var speakBtn = document.getElementById('mira-speak');
+    var speakOn = speakBtn && speakBtn.getAttribute('aria-pressed') === 'true';
+    if (speakBtn) {
+      if (!('speechSynthesis' in window)) { speakBtn.hidden = true; }
+      speakBtn.addEventListener('click', function () {
+        speakOn = !speakOn;
+        speakBtn.setAttribute('aria-pressed', speakOn ? 'true' : 'false');
+        speakBtn.textContent = speakOn ? 'Read aloud: on' : 'Read aloud: off';
+        if (!speakOn && 'speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+        fetch('/settings/mira-voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                     'X-Requested-With': 'fetch' },
+          body: 'enabled=' + (speakOn ? '1' : '0')
+        }).catch(function () { /* preference save is best-effort */ });
+      });
+    }
+    function speakReply() {
+      if (!speakOn || !('speechSynthesis' in window) || !miraBody) { return; }
+      var text = (miraBody.textContent || '')
+        .replace(/\[cite:[^\]]*\]/g, '')
+        .slice(0, 2000);
+      if (!text.trim()) { return; }
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+
+    fetch('/mira/turn', {
+      method: 'POST', body: fd, headers: { 'Accept': 'text/event-stream' }
+    }).then(function (resp) {
+      if (!resp.body) { throw new Error('no stream'); }
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) { finish(); return; }
+          buffer += decoder.decode(res.value, { stream: true });
+          var idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            var frame = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            var ev = 'message', data = '';
+            frame.split('\n').forEach(function (line) {
+              if (line.indexOf('event:') === 0) ev = line.slice(6).trim();
+              else if (line.indexOf('data:') === 0) data += line.slice(5).trim();
+            });
+            if (ev === 'done') { finish(); return; }
+            if (ev === 'error') { miraBody.textContent = data; finish(); return; }
+            try { miraBody.textContent += JSON.parse(data); } catch (_e) {}
+            scrollDown();
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function () {
+      if (!miraBody.textContent) {
+        miraBody.textContent = 'Mira is unreachable right now. Your message was saved — try again in a moment.';
+      }
+      finish();
+    });
+  });
+})();
+</script>
+{% endblock %}

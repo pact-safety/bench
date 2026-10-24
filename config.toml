@@ -1,0 +1,71 @@
+# config.toml — runtime knobs. The scheduler weights are the dials you'll
+# tune as the daily mix drifts. Edit, restart, no migration needed.
+
+[app]
+db_path = "data/prep.db"
+content_dir = "content"
+host = "127.0.0.1"
+port = 8765
+
+[ui]
+# CodeMirror 6 in the solution editor (loads from esm.sh on demand, so
+# the first problem page takes ~300-500ms longer to render the editor).
+# Set false to revert to the plain textarea.
+use_codemirror = true
+# Daily session max problems. The scheduler tops out here.
+session_size = 2
+
+[scheduler]
+# Weighted scheduler — each component's relative pull. All are summed
+# linearly. Tune until the daily mix feels right; defaults below were
+# chosen so a never-attempted problem outranks a recently-aced one but
+# loses to a problem that lapsed 3 weeks ago.
+weight_days_since = 1.0       # log-scaled
+weight_low_confidence = 1.2   # confidence == 1 adds 1.2; confidence == 5 adds 0
+weight_over_time = 0.8        # ratio of last_time / time_bucket, clamped
+weight_used_reference = 0.6   # +0.6 if last attempt looked at solution
+weight_topic_gap = 0.5        # +0.5 per untouched-14d tag
+weight_never_attempted = 2.5  # large; ensures new problems surface
+weight_content_aligned = 1.5  # boosts compose problems whose axes overlap content (reading / video / exercise) the user finished recently
+content_aligned_recency_days = 3  # lookback window for "recently finished"
+weight_jd_aligned = 1.5  # boosts compose problems aligned with the active JD (per /jds); 0 disables
+weight_used_hints = 0.6  # +0.6 if last attempt leaned on the hint ladder (capped by tier reached, not raw count); same magnitude as used_reference
+
+# Session constraints
+max_60min_per_session = 1
+require_category_span = true  # surfaced set spans 2 of {ml_coding, debug, algo}
+
+[warmup]
+# Warmup button surfaces a warmup not attempted in this many days, if
+# possible; otherwise least-recently attempted.
+recency_floor_days = 3
+
+[runner]
+# Hard wall-clock limits on test execution. Python tests are CPU-bound;
+# Rust includes cargo's first-run compile.
+python_timeout_seconds = 20
+rust_timeout_seconds = 60
+
+[mira]
+# MIRA — the research-mentor surface (app/services/mira.py). MIRA is the
+# *expansive-thinking* surface: an LLM with a harness around it, so it rides
+# the strongest model. Brain (the cheap deterministic surface) declares its
+# own [brain].model = Haiku. No buried default — the model lives here so the
+# tier is one edit, not a grep. Opus is the alternative when depth matters
+# more than latency/cost.
+model = "claude-sonnet-4-5"
+# How many prior turns of a conversation to replay into the prompt, bounded
+# further by an approximate token budget in mira.py. Keeps a 20+ turn chat
+# from blowing the context window or the spend cap.
+history_max_turns = 20
+history_token_budget = 6000
+
+[em]
+# Engineering Method spine. See app/services/em.py.
+# Plan gate: the Implement editor is read-only until the Plan textarea
+# has this many characters. Soft — the user can always bypass via the
+# unlock button. Set to 0 to disable the gate entirely.
+plan_gate_chars = 80
+# When true, show the EM phase sections on every problem (subject to
+# the problem's em_mode). Future per-user setting will override this.
+default_enabled = true

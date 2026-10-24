@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+{% block title %}Set your aim — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--aim">
+  <header class="page__head">
+    <h1 class="page__title">Aim</h1>
+    <p class="page__meta">
+      One place to track where you stand, where you're going, and the
+      evidence you can point to.
+    </p>
+  </header>
+
+  <details class="aim-details" id="stand" open>
+    <summary class="aim-details__summary">
+      <span class="aim-details__title">Where you stand</span>
+      <span class="aim-details__meta">Skill profile + suggested focus</span>
+    </summary>
+    <div class="aim-details__body">
+      {% if latest_skill_run %}
+        <p class="page__meta">
+          Latest assessment from {{ latest_skill_run.completed_at.strftime("%Y-%m-%d") }}.
+          {{ skill_scores | length }} of {{ axis_labels | length }} axes assessed.
+          This snapshot does not automatically update from practice attempts.
+          Chart groups average only assessed axes; missing evidence is not a zero score.
+        </p>
+        <div class="aim-stand-grid page__section">
+          <section class="aim-stand-grid__chart" aria-label="Skill pentagon">
+            {% include "_skill_chart.html" %}
+          </section>
+
+          <section class="aim-stand-grid__axes">
+            <h2 class="section-label">Per-axis breakdown</h2>
+            <div class="axis-grid">
+              {% for axis, label in axis_labels.items() %}
+                {% set measured = axis in skill_scores %}
+                {% set v = skill_scores.get(axis) %}
+                {% if not measured %}{% set tier = "unknown" %}{% elif v >= 0.66 %}{% set tier = "strong" %}{% elif v >= 0.33 %}{% set tier = "mid" %}{% else %}{% set tier = "weak" %}{% endif %}
+                {% set chart_axis = axis_to_chart.get(axis, "systems") %}
+                <div class="axis-row aim-axis-row axis-row--{{ tier }}" data-axis="{{ axis }}" data-chart-axis="{{ chart_axis }}">
+                  <span class="axis-row__name">{{ label }}</span>
+                  {% if measured %}
+                    {% set pct = (v * 100) | round | int %}
+                    <span class="axis-row__bar"><span class="axis-row__fill" style="width: {{ pct }}%;"></span></span>
+                    <span class="axis-row__pct">{{ pct }}%</span>
+                  {% else %}
+                    <span class="muted">Not assessed</span>
+                    <span class="axis-row__pct">—</span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+        </div>
+
+        {% if not calibration_chart.points %}
+          <section class="page__section aim-calibration aim-calibration--empty">
+            <h2 class="section-label">Calibration over time</h2>
+            <p class="muted">
+              No calibration data yet. The Calibration prompt rotates
+              into your <a href="/reflect">weekly Reflect</a> set
+              alongside Hits / Misses / Mode. When you fill in the
+              predicted vs. actual fields, each reflection becomes one
+              point on this chart — gap-over-time, narrowing as
+              calibration improves (Moore &amp; Healy 2008 framing).
+            </p>
+          </section>
+        {% endif %}
+
+        {% if calibration_chart.points %}
+          <section class="page__section aim-calibration">
+            <h2 class="section-label">Calibration over time</h2>
+            <p class="muted">Each reflection asks one calibration check (predicted vs actual). Over time the gap should narrow. This is the chart.</p>
+            <div class="aim-calibration-chart-wrap">
+              <svg
+                class="aim-calibration-chart"
+                viewBox="0 0 {{ calibration_chart.view_width }} {{ calibration_chart.view_height }}"
+                role="img"
+                aria-label="Calibration scatter plot: predicted versus actual percentages"
+              >
+                <rect
+                  class="aim-calibration-chart__plot"
+                  x="{{ calibration_chart.plot_left }}"
+                  y="{{ calibration_chart.plot_top }}"
+                  width="{{ calibration_chart.plot_width }}"
+                  height="{{ calibration_chart.plot_height }}"
+                />
+
+                {% for tick in calibration_chart.axis_ticks %}
+                  {% set tx = calibration_chart.plot_left + (calibration_chart.plot_width * (tick / 100.0)) %}
+                  {% set ty = calibration_chart.plot_bottom - (calibration_chart.plot_height * (tick / 100.0)) %}
+                  <line
+                    class="aim-calibration-chart__grid"
+                    x1="{{ calibration_chart.plot_left }}"
+                    y1="{{ ty }}"
+                    x2="{{ calibration_chart.plot_right }}"
+                    y2="{{ ty }}"
+                  />
+                  <line
+                    class="aim-calibration-chart__grid"
+                    x1="{{ tx }}"
+                    y1="{{ calibration_chart.plot_top }}"
+                    x2="{{ tx }}"
+                    y2="{{ calibration_chart.plot_bottom }}"
+                  />
+                  <text class="aim-calibration-chart__tick" x="{{ tx }}" y="{{ calibration_chart.plot_bottom + 18 }}" text-anchor="middle">{{ tick }}</text>
+                  <text class="aim-calibration-chart__tick" x="{{ calibration_chart.plot_left - 10 }}" y="{{ ty + 3 }}" text-anchor="end">{{ tick }}</text>
+                {% endfor %}
+
+                <line
+                  class="aim-calibration-chart__diag"
+                  x1="{{ calibration_chart.plot_left }}"
+                  y1="{{ calibration_chart.plot_bottom }}"
+                  x2="{{ calibration_chart.plot_right }}"
+                  y2="{{ calibration_chart.plot_top }}"
+                />
+
+                {% for point in calibration_chart.points %}
+                  <circle
+                    class="aim-calibration-chart__point"
+                    cx="{{ point.x }}"
+                    cy="{{ point.y }}"
+                    r="{{ point.radius }}"
+                    opacity="{{ point.opacity }}"
+                    fill-opacity="{{ point.intensity }}"
+                    data-predicted="{{ point.predicted_pct }}"
+                    data-actual="{{ point.actual_pct }}"
+                    data-x="{{ point.x }}"
+                    data-y="{{ point.y }}"
+                  >
+                    <title>{{ point.tooltip }}</title>
+                  </circle>
+                {% endfor %}
+
+                <text class="aim-calibration-chart__label" x="{{ calibration_chart.plot_left + (calibration_chart.plot_width / 2) }}" y="{{ calibration_chart.view_height - 8 }}" text-anchor="middle">Predicted (%)</text>
+                <text
+                  class="aim-calibration-chart__label"
+                  x="16"
+                  y="{{ calibration_chart.plot_top + (calibration_chart.plot_height / 2) }}"
+                  text-anchor="middle"
+                  transform="rotate(-90 16 {{ calibration_chart.plot_top + (calibration_chart.plot_height / 2) }})"
+                >Actual (%)</text>
+              </svg>
+            </div>
+            <p class="page__meta">Closer to the diagonal = better-calibrated forecasts.</p>
+          </section>
+        {% endif %}
+
+        <section class="page__section">
+          <a class="bordered-button" href="/readiness">Readiness for active JD →</a>
+          <form method="post" action="/onboarding/start" style="display:inline; margin-left: var(--space-3);">
+            <button type="submit" class="bordered-button">Retake assessment →</button>
+          </form>
+        </section>
+
+        {% if suggestion %}
+          <section class="page__section">
+            <h2 class="section-label">Suggested focus</h2>
+            <p class="muted">Suggested assessed focus: <strong>{{ suggestion.axis_label }}</strong></p>
+            <a class="problem-card problem-card--inline" href="/problem/{{ suggestion.problem.slug }}">
+              <div class="problem-card__head">
+                <span class="badge badge--{{ suggestion.problem.problem_type }}">{{ suggestion.problem.problem_type.replace('_',' ') }}</span>
+                <span class="badge badge--time">{{ suggestion.problem.time_bucket }} min</span>
+                <span class="badge badge--diff">{{ suggestion.problem.difficulty }}</span>
+              </div>
+              <h3 class="problem-card__title">{{ suggestion.problem.title }}</h3>
+            </a>
+          </section>
+        {% endif %}
+      {% else %}
+        <p class="page__meta">
+          No assessment yet — <a class="action-link" href="/onboarding">take the initial assessment</a>
+          so scheduling has a baseline.
+        </p>
+      {% endif %}
+
+      {% if imposter_signal and imposter_signal.state != "none" and evidence.top_credential_axes and evidence.latest_credential_run_id %}
+        <section class="page__section aim-stand__evidence">
+          <h2 class="section-label">What your credentials say</h2>
+          <p class="muted">
+            Your CV shows strong signal on:
+            {% for axis in evidence.top_credential_axes[:3] %}
+              <strong>{{ axis_labels.get(axis, axis.replace("_", " ").title()) }}</strong>{% if not loop.last %}, {% endif %}
+            {% endfor %}.
+          </p>
+          {% if evidence.triggering_axes %}
+            <p class="muted">
+              Self-rated lower:
+              {% for axis in evidence.triggering_axes[:3] %}
+                <strong>{{ axis_labels.get(axis, axis.replace("_", " ").title()) }}</strong>{% if not loop.last %}, {% endif %}
+              {% endfor %}.
+            </p>
+          {% endif %}
+          <p class="page__meta">
+            Use the difference as a starting hypothesis, not a verdict.
+            <a class="action-link" href="/credentials/{{ evidence.latest_credential_run_id }}">See the full credential analysis →</a>
+          </p>
+        </section>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="aim-details" id="aim">
+    <summary class="aim-details__summary">
+      <span class="aim-details__title">Where you're going</span>
+      <span class="aim-details__meta">JD parsing + active role focus</span>
+    </summary>
+    <div class="aim-details__body">
+      {% if active_jd %}
+        <section class="page__section">
+          <h2 class="section-label">Active</h2>
+          <div class="jd-card jd-card--active">
+            <div class="jd-card__head">
+              <span class="jd-card__title">{{ active_jd.title | jd_title }}</span>
+              {% if active_jd.org %}<span class="muted">· {{ active_jd.org }}</span>{% endif %}
+            </div>
+            {% if active_jd.summary %}<p class="jd-card__summary">{{ active_jd.summary }}</p>{% endif %}
+            <p class="jd-card__actions">
+              <a class="muted" href="/aim/jd/{{ active_jd.id }}">open detail →</a>
+              <form method="post" action="/jds/clear-active" style="display:inline; margin-left: var(--space-3)">
+                <button type="submit" class="muted-button">clear active</button>
+              </form>
+            </p>
+          </div>
+        </section>
+      {% else %}
+        <section class="page__section">
+          <h2 class="section-label">No active role yet</h2>
+          <div class="empty-state">
+            <p>
+              An active JD biases your daily Compose problems toward what
+              the role actually wants. The readiness page shows axis-level
+              fit; the "Aim" nav lights up when you're targeting something.
+            </p>
+            <p class="muted">
+              Paste a JD below to activate — or take this on during your
+              next onboarding pass.
+            </p>
+            <p class="page__meta">
+              <a class="action-link" href="#new-jd-form">Paste a JD now ↓</a>
+              <span class="muted"> · </span>
+              <a class="action-link muted" href="/onboarding/start">Run onboarding</a>
+            </p>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="page__section">
+        <h2 class="section-label">Paste a new JD</h2>
+        <form class="jd-upload" id="new-jd-form" method="post" action="/jds">
+          <label class="jd-upload__field">
+            <span>Job description text <em class="muted">— or paste the URL of the listing; we'll fetch title + org + body</em></span>
+            <textarea name="source_text" rows="14" required placeholder="Paste the full JD text, OR a URL like https://www.anthropic.com/jobs/4242 — we autodetect the title and org from the page."></textarea>
+          </label>
+          <div class="jd-upload__row">
+            <label class="jd-upload__field">
+              <span>Title (optional — autodetected from first line)</span>
+              <input type="text" name="title" maxlength="200" placeholder="e.g. Research Engineer, Interpretability">
+            </label>
+            <label class="jd-upload__field">
+              <span>Org (optional)</span>
+              <input type="text" name="org" maxlength="100" placeholder="e.g. Anthropic">
+            </label>
+          </div>
+          <button type="submit" class="primary">Parse &amp; activate</button>
+        </form>
+      </section>
+
+      {% if not jds %}
+        <section class="page__section aim-empty-explainer">
+          <p class="muted">
+            No JDs added yet. Once you paste one above, the bench parses
+            it for axis weights (which of the 13 skills it cares about,
+            and how much), iterator/amplifier/connector profile fit
+            (LessWrong taxonomy), and signal tags. Listed JDs become
+            active targets the daily scheduler ranks problems against.
+          </p>
+        </section>
+      {% endif %}
+
+      {% if jds %}
+        <section class="page__section">
+          <h2 class="section-label">All JDs</h2>
+          <ul class="jd-list">
+            {% for j in jds %}
+              <li class="jd-row">
+                <a class="jd-row__main" href="/aim/jd/{{ j.id }}">
+                  <span class="jd-row__title">{{ j.title | jd_title }}</span>
+                  {% if j.org %}<span class="muted">{{ j.org }}</span>{% endif %}
+                  <span class="jd-row__meta">
+                    {% if active_jd and active_jd.id == j.id %}<span class="badge badge--em">active</span>{% endif %}
+                    {% for t in j.signal_tags[:5] %}<span class="tag">{{ t }}</span>{% endfor %}
+                  </span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="aim-details" id="evidence">
+    <summary class="aim-details__summary">
+      <span class="aim-details__title">Your evidence</span>
+      <span class="aim-details__meta">Credential upload + comparison</span>
+    </summary>
+    <div class="aim-details__body">
+      <section class="page__section">
+        <h2 class="section-label">Privacy</h2>
+        <p>
+          Your file is stored under <code>data/credentials/&lt;your-user-id&gt;/&lt;run-id&gt;/</code>
+          on this machine and never copied off it. Extracted text is sent
+          to Claude only when you click <em>Analyze</em>. If your
+          <code>ANTHROPIC_API_KEY</code> isn't set, a deterministic
+          keyword-based analyzer runs instead.
+        </p>
+      </section>
+
+      <section class="page__section">
+        <h2 class="section-label">Upload</h2>
+        <form class="cred-upload" method="post" action="/credentials" enctype="multipart/form-data">
+          <label class="cred-upload__field">
+            <span>File (PDF, TXT, MD — 10MB max)</span>
+            <input type="file" name="file" accept=".pdf,.txt,.md,application/pdf,text/plain" required>
+          </label>
+          <button type="submit" class="primary">Upload</button>
+        </form>
+      </section>
+
+      {% if not credential_runs %}
+        <section class="page__section aim-empty-explainer">
+          <p class="muted">
+            No credentials uploaded yet. Once you upload a resume PDF
+            (or paste text), the bench extracts axis evidence (which
+            skills your documented experience demonstrates) and
+            infers an iterator/amplifier/connector profile. Used by
+            the imposter-signal detector to surface "your stated
+            confidence diverges from what your CV actually shows."
+          </p>
+        </section>
+      {% endif %}
+
+      {% if credential_runs %}
+        <section class="page__section">
+          <h2 class="section-label">Stored credentials</h2>
+          <ul class="credential-list">
+            {% for run in credential_runs %}
+              <li class="credential-row">
+                <details class="credential-row__details">
+                  <summary class="credential-row__summary">
+                    <span class="credential-row__headline">
+                      <strong class="credential-row__filename">
+                        {{ run.primary_filename or "Credential run #" ~ run.id }}
+                      </strong>
+                      {% if run.completed_at %}
+                        <span class="muted credential-row__date">
+                          {{ run.completed_at.strftime("%Y-%m-%d") }}
+                        </span>
+                      {% endif %}
+                    </span>
+                    {% if run.top_axes %}
+                      <span class="credential-row__chips">
+                        {% for axis in run.top_axes[:3] %}
+                          <span class="tag tag--axis">{{ axis }}</span>
+                        {% endfor %}
+                      </span>
+                    {% endif %}
+                  </summary>
+                  <div class="credential-row__body">
+                    {% if run.summary_md %}
+                      <div class="md credential-row__summary-md">{{ run.summary_md | e | markdown }}</div>
+                    {% else %}
+                      <p class="muted">No saved analysis. <a href="/credentials/{{ run.id }}">Re-analyze →</a></p>
+                    {% endif %}
+                    <p class="page__meta credential-row__actions">
+                      <a class="action-link" href="/credentials/{{ run.id }}">Full review →</a>
+                    </p>
+                  </div>
+                </details>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    </div>
+  </details>
+</article>
+
+<script>
+  (function () {
+    function openTargetHashPanel() {
+      var hash = window.location.hash;
+      if (!hash) return;
+      var panel = document.querySelector(hash);
+      if (panel && panel.tagName.toLowerCase() === "details") {
+        panel.open = true;
+      }
+    }
+    openTargetHashPanel();
+    window.addEventListener("hashchange", openTargetHashPanel);
+
+    function bindStandHoverLink() {
+      var stand = document.getElementById("stand");
+      if (!stand) return;
+
+      var rows = Array.prototype.slice.call(
+        stand.querySelectorAll(".aim-axis-row[data-chart-axis]")
+      );
+      var chartTargets = Array.prototype.slice.call(
+        stand.querySelectorAll(".stat-pentagon [data-axis]")
+      );
+      if (!rows.length || !chartTargets.length) return;
+
+      var activeAxis = null;
+      var activeRow = null;
+
+      function clearHighlights() {
+        activeAxis = null;
+        activeRow = null;
+        rows.forEach(function (row) {
+          row.classList.remove("is-highlighted");
+        });
+        chartTargets.forEach(function (el) {
+          el.classList.remove("is-highlighted");
+        });
+      }
+
+      function setHighlights(axis, rowEl) {
+        if (!axis) {
+          clearHighlights();
+          return;
+        }
+
+        if (activeAxis === axis && activeRow === rowEl) return;
+        clearHighlights();
+        activeAxis = axis;
+        activeRow = rowEl || null;
+
+        chartTargets.forEach(function (el) {
+          if (el.dataset.axis === axis) {
+            el.classList.add("is-highlighted");
+          }
+        });
+
+        if (rowEl) {
+          rowEl.classList.add("is-highlighted");
+          return;
+        }
+
+        rows.forEach(function (row) {
+          if (row.dataset.chartAxis === axis) {
+            row.classList.add("is-highlighted");
+          }
+        });
+      }
+
+      function relatedAxis(ev) {
+        var next = ev.relatedTarget;
+        if (!next || !next.closest) return null;
+        var axisEl = next.closest("[data-axis], [data-chart-axis]");
+        if (!axisEl) return null;
+        return axisEl.dataset.axis || axisEl.dataset.chartAxis || null;
+      }
+
+      rows.forEach(function (row) {
+        row.addEventListener("mouseenter", function () {
+          setHighlights(row.dataset.chartAxis, row);
+        });
+        row.addEventListener("mouseleave", function (ev) {
+          if (relatedAxis(ev) === row.dataset.chartAxis) return;
+          clearHighlights();
+        });
+      });
+
+      chartTargets.forEach(function (target) {
+        target.addEventListener("mouseenter", function () {
+          setHighlights(target.dataset.axis, null);
+        });
+        target.addEventListener("mouseleave", function (ev) {
+          if (relatedAxis(ev) === target.dataset.axis) return;
+          clearHighlights();
+        });
+      });
+    }
+
+    bindStandHoverLink();
+  })();
+</script>
+
+{% endblock %}

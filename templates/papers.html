@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Papers — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--papers">
+  <header class="page__head">
+    <h1 class="page__title">Papers</h1>
+    <p class="page__meta">
+      Every paper in the library against how far you actually got. Andrew Ng's
+      table from the CS230 lecture: the value is seeing the pile you skimmed
+      and parked next to the few you took apart, so you can tell a corpus you
+      have read from one you have merely collected.
+    </p>
+    <p class="page__meta muted">
+      Ng's rough calibration: 5-20 papers in an area gets you a working
+      understanding; 50-100 gets you a deep one. Those are counts, not a mark
+      — nothing here is scored.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <p class="page__meta">
+      <span class="badge badge--time">{{ started_count }} opened</span>
+      <span class="tag">{{ deep_count }} taken apart</span>
+      {% if parked_count %}<span class="muted">{{ parked_count }} parked or dropped</span>{% endif %}
+    </p>
+    <p class="muted">
+      Parked is a real outcome. Deciding a paper is not for you after the
+      abstract and figures is the efficiency the method is built around.
+    </p>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">The table</h2>
+    {% if rows %}
+      <ul class="fb-list">
+        {% for r in rows %}
+          <li class="fb-item">
+            <header class="fb-item__head">
+              <a class="mira-card__title" href="/content/{{ r.item.slug }}#passes">{{ r.item.title }}</a>
+              {% if r.pass %}
+                <span class="tag">pass {{ r.pass }} of 4</span>
+              {% else %}
+                <span class="muted">not opened</span>
+              {% endif %}
+              {% if r.verdict %}<span class="tag">{{ r.verdict }}</span>{% endif %}
+              {% if r.answered %}<span class="muted">{{ r.answered }} noted</span>{% endif %}
+              {% if r.item.source %}<span class="muted">{{ r.item.source }}</span>{% endif %}
+            </header>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">
+        No papers in the library yet. Readings that link to arXiv, a DOI, or a
+        conference proceedings get the pass ladder; book chapters and blog
+        posts keep the simple reflection.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">What each pass is for</h2>
+    <ul>
+      <li><strong>1 — Orient.</strong> Title, abstract, figures. Decide if it is relevant.</li>
+      <li><strong>2 — Claim.</strong> Intro, conclusion, figures again, scan the rest.</li>
+      <li><strong>3 — Mechanism.</strong> The whole paper, skipping maths you do not know yet.</li>
+      <li><strong>4 — Depth.</strong> The maths and the terms you skipped. Only for papers you will build on or argue with.</li>
+    </ul>
+    <p class="muted">
+      Questions come in four dimensions:
+      {% for key, label in dimensions.items() %}<span class="tag">{{ label }}</span>{% endfor %}
+    </p>
+  </section>
+</article>
+
+{% endblock %}

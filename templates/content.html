@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — Li's Bench{% endblock %}
+{% block body %}
+
+{% set done = progress and progress.status == 'completed' %}
+{% set favorited = progress and progress.favorited %}
+{% set rating = progress.rating_1_to_5 if progress else None %}
+
+<article class="page page--content learning-page" data-resource-scope>
+  <header class="page__head">
+    <p class="page__meta"><a href="/library{% if track_context %}?track={{ track_context.track.slug }}{% endif %}">← Library</a>{% if track_context %} · <a href="/tracks/{{ track_context.track.slug }}">{{ track_context.track.title }}</a>{% endif %}</p>
+    <div class="content__meta">
+      <span class="content__kind">{{ item.kind }}</span>
+      {% if item.source_kind == 'user' %}<span class="badge badge--external" title="You added this">external</span>{% endif %}
+      {% if item.duration_min %}<span class="muted">{{ item.duration_min }} min</span>{% endif %}
+      {% if done %}<span class="content__done">✓ marked complete{% if progress.checked_at %} · {{ progress.checked_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</span>{% endif %}
+      <form method="post" action="/content/{{ item.id }}/favorite" class="content__favorite-form" title="{% if favorited %}Unfavorite{% else %}Favorite{% endif %}">
+        <button type="submit" class="content__favorite {% if favorited %}is-favorited{% endif %}" aria-label="{% if favorited %}Unfavorite{% else %}Favorite{% endif %}">
+          {% if favorited %}★ favorited{% else %}☆ favorite{% endif %}
+        </button>
+      </form>
+    </div>
+    {% if chain_step %}
+      <p class="page__meta">Step {{ chain_step.step }} of {{ chain_step.total }}</p>
+    {% endif %}
+    <h1 class="page__title">{{ item.title }}</h1>
+    {% if item.source %}<p class="page__meta">{{ item.source }}</p>{% endif %}
+    {% if item.kind == 'exercise' and not track_context %}
+      {% if item.colab_url %}
+        <p><a class="primary-link" href="{{ item.colab_url }}" target="_blank" rel="noopener">Open in Colab ↗</a></p>
+      {% elif item.gpu_required %}
+        <p class="muted">GPU recommended — bring your own (Colab, Modal, local CUDA).</p>
+      {% endif %}
+    {% endif %}
+    <div class="content__tags">
+      {% for a in item.axes %}<span class="tag tag--axis">{{ a.replace('_',' ') }}</span>{% endfor %}
+    </div>
+  </header>
+
+  {% if track_context %}
+    <section class="page__section">
+      <h2 class="section-label">Your next step</h2>
+      {% if track_context.is_primary %}{% if track_context.section.notes %}<p>{{ track_context.section.notes }}</p>{% endif %}<p><strong>Learning target:</strong> {{ track_context.section.checkpoint }}</p>{% else %}<p>Supplement for {{ track_context.section.title }}. Use it when you need another explanation; it is not an extra prerequisite.</p>{% endif %}
+      {% if track_context.session.get('next_action') %}<p><strong>Saved next step:</strong> {{ track_context.session.next_action }}</p>{% endif %}
+      {% if track_context.session.get('stopping_point') %}<p class="saved-prose"><strong>Last stopping point:</strong> {{ track_context.session.stopping_point }}</p>{% endif %}
+      <p>Work through a manageable block, then leave a reflection below. Completing this resource does not pass the section's practice check.</p>
+    </section>
+  {% endif %}
+  {% if item.url %}
+    <section class="page__section">
+      <h2 class="section-label">{% if item.kind == 'video' %}Watch{% elif item.kind == 'exercise' %}Practice{% elif item.kind == 'podcast' %}Listen{% else %}Read{% endif %}</h2>
+      {% set reader_url = resource_reader_url(item.url) %}
+      <p><a class="btn btn--primary" href="{{ item.url }}"{% if reader_url %} data-resource-reader="{{ reader_url }}" data-resource-title="{{ item.title }}"{% else %} target="_blank" rel="noopener noreferrer"{% endif %}>{% if reader_url %}Read here{% elif item.kind == 'exercise' %}Open exercise{% elif item.kind == 'video' %}Open video{% else %}Open source{% endif %}{% if not reader_url %} ↗{% endif %}</a></p>
+      {% if not reader_url %}<p class="muted">The source opens separately. Return here to save your reflection, rating, and progress.</p>{% endif %}
+    </section>
+  {% endif %}
+
+  {% if item.content_md and not track_context %}
+    <section class="page__section md">
+      {{ item.content_md | markdown }}
+    </section>
+  {% endif %}
+
+  {% if is_paper %}
+    {# Ng's multi-pass ladder. Papers only — a book chapter has no
+       abstract and no figures, so this would be theatre on one.
+       Deliberately no score, count-out-of-total or completion bar:
+       see the grading constraint in app/services/recitation.py. #}
+    <section class="page__section" id="passes">
+      <h2 class="section-label">Reading passes</h2>
+      <p class="muted">
+        Don't read this front to back. Each pass has one job, and after the
+        first you decide whether the rest of it is worth your attention —
+        most papers aren't, and parking one is the point rather than a
+        failure to finish.
+      </p>
+
+      {% if paper_state.verdict %}
+        <p class="muted">
+          Your call after pass 1: <span class="tag">{{ paper_state.verdict }}</span>
+        </p>
+      {% endif %}
+
+      {% for row in paper_passes %}
+        <details class="mira-add" {% if row.open and not row.done %}open{% endif %}>
+          <summary>
+            Pass {{ row.pass.number }} — {{ row.pass.label }}
+            {% if row.done %}<span class="tag">done</span>{% endif %}
+            {% if row.answered %}<span class="muted">· {{ row.answered }} noted</span>{% endif %}
+          </summary>
+
+          {% if row.open %}
+            <p class="muted"><strong>Read:</strong> {{ row.pass.read }}</p>
+            <p class="muted">{{ row.pass.purpose }}</p>
+
+            <form method="post" action="/content/{{ item.id }}/pass">
+              <input type="hidden" name="to_pass" value="{{ row.pass.number }}">
+              {% for q in row.pass.questions %}
+                <div class="form-field">
+                  <label class="form-field__label" for="q-{{ q.key }}">
+                    {{ q.prompt }}
+                    <span class="tag">{{ dimensions[q.dimension] }}</span>
+                  </label>
+                  {% if q.hint %}<span class="muted">{{ q.hint }}</span>{% endif %}
+                  <textarea id="q-{{ q.key }}" name="q_{{ q.key }}" rows="3"
+                            spellcheck="true" data-voice-note
+                            data-voice-note-label="Dictate answer">{{ paper_answers.get(q.key, '') }}</textarea>
+                </div>
+              {% endfor %}
+
+              {% if row.pass.number == 1 %}
+                <div class="form-field">
+                  <label class="form-field__label" for="verdict">Is it worth going on?</label>
+                  <select id="verdict" name="verdict">
+                    <option value="">— decide later —</option>
+                    {% for v in paper_verdicts %}
+                      <option value="{{ v }}" {% if paper_state.verdict == v %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              {% endif %}
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn--primary">
+                  {% if row.done %}Save this pass{% else %}Done with pass {{ row.pass.number }}{% endif %}
+                </button>
+              </div>
+            </form>
+          {% else %}
+            <p class="muted">Finish pass {{ row.pass.number - 1 }} first.</p>
+          {% endif %}
+        </details>
+      {% endfor %}
+
+      {% if paper_deep_read %}
+        <p class="muted">
+          You reached the mechanism pass and left notes behind. That is the
+          kind of thing worth recording —
+          <a class="action-link" href="/signal/criterion/c11-reading-depth">file it as evidence →</a>
+        </p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    <h2 class="section-label" data-resource-reflection tabindex="-1">Reflection</h2>
+    <p class="muted">
+      {% if is_paper %}Anything the passes above didn't ask for — what landed,
+      what surprised you, what to revisit.{% else %}Typed notes on this
+      {{ item.kind }} — what landed, what surprised you, what to revisit.{% endif %}
+    </p>
+    <form id="content-reflection-{{ item.id }}" method="post" action="/content/{{ item.id }}/reflect" class="content__reflect">
+      <label for="content-reflection">What did you learn, what remains unclear, and what will you try next?</label>
+      <textarea id="content-reflection" name="notes_md" rows="6" placeholder="One sentence is fine. Three is better." spellcheck="true" data-autosave data-autosave-persisted data-voice-note data-voice-note-label="Dictate reflection">{{ progress.notes_md if progress and progress.notes_md else '' }}</textarea>
+      <div class="reflect-row">
+        <button type="submit" class="muted-button">save reflection</button>
+        <span class="autosave-status muted" data-autosave-status="notes_md" aria-live="polite">{% if progress and progress.notes_md %}saved{% endif %}</span>
+      </div>
+    </form>
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Rating</h2>
+    <p class="muted">How useful was this for your understanding? Feeds the picker.</p>
+    <form method="post" action="/content/{{ item.id }}/rate" class="content__rating">
+      {% for n in range(1, 6) %}
+        <label class="content__rating-cell {% if rating == n %}is-active{% endif %}">
+          <input type="radio" name="rating" value="{{ n }}" required {% if rating == n %}checked{% endif %}>
+          <span>{{ '★' * n }}</span>
+          <span class="muted">{{ {1: 'noise', 2: 'meh', 3: 'fine', 4: 'good', 5: 'essential'}[n] }}</span>
+        </label>
+      {% endfor %}
+      <button type="submit" class="bordered-button">Save rating</button>
+      {% if rating %}
+        <button type="submit" name="rating" value="0" class="muted-button">clear</button>
+      {% endif %}
+    </form>
+  </section>
+
+  {% if not track_context %}
+  <section class="page__section recite" id="recite" data-content-id="{{ item.id }}">
+    <h2 class="section-label">Recitation</h2>
+    <p class="muted">
+      Listen while you walk, then explain it back out loud. You'll hear
+      exactly what you left out — and anything you skip simply comes back sooner.
+    </p>
+
+    {# Audio-out: revealed by JS only if the server has a key + rendered
+       audio (GET audio.json). Hidden otherwise — no dead player. #}
+    <div class="recite__audio" data-recite-audio hidden>
+      <button type="button" class="muted-button" data-recite-listen>▶ Listen</button>
+      <span class="muted recite__audio-status" data-recite-audio-status aria-live="polite"></span>
+    </div>
+
+    <fieldset class="recite__mode">
+      <legend class="visually-hidden">Recitation mode</legend>
+      <label><input type="radio" name="recite-mode" value="review" checked> Review — I've read this</label>
+      <label><input type="radio" name="recite-mode" value="pretest"> Pretest — I haven't yet</label>
+    </fieldset>
+    <p class="muted recite__pretest-note" data-recite-pretest-note hidden>
+      This is a pretest. Blanking is the normal result and it still improves
+      retention — the point is to prime what to look for.
+    </p>
+
+    <div class="recite__controls">
+      <button type="button" class="primary" data-recite-record>Start reciting</button>
+      <span class="muted recite__status" data-recite-status aria-live="polite"></span>
+    </div>
+
+    {# Results: named gaps + scheduling, never a score. Populated by JS. #}
+    <div class="recite__results" data-recite-results hidden aria-live="polite"></div>
+  </section>
+
+  {% endif %}
+  <section class="content__actions">
+    {% if done %}
+      <form method="post" action="/content/{{ item.id }}/check?undo=1" style="display:inline">
+        <button type="submit" class="muted-button">undo · mark unread</button>
+      </form>
+      {# Done already → "Next →" nudges to whatever's left in today's flow. #}
+      <a class="primary-link" href="{{ track_context.continue_url if track_context else '/today/next' }}">{{ track_context.continue_label if track_context else 'Next' }} →</a>
+    {% else %}
+      {# Mark complete + advance in one click — `next=1` makes the
+         POST handler redirect through /today/next instead of staying. #}
+      <form method="post" action="/content/{{ item.id }}/check" style="display:inline">
+        <input type="hidden" name="next" value="1">
+        <button type="submit" class="bordered-button">{% if track_context %}Finish resource + continue{% else %}Mark complete + next{% endif %} →</button>
+      </form>
+      <form method="post" action="/content/{{ item.id }}/check" style="display:inline">
+        <button type="submit" class="muted-button">just mark complete</button>
+      </form>
+    {% endif %}
+    <a class="muted" href="/">back to Today</a>
+  </section>
+
+  {% if track_context %}
+    <section class="page__section">
+      <p><a href="{{ track_context.check_url }}">Save a stopping point or open the section practice check →</a></p>
+      <p><a href="/mira?track={{ track_context.track.slug }}&amp;section={{ track_context.idx }}">Reflect with Mira →</a></p>
+      {% if track_context.resources %}<details><summary>Other resources for this section</summary><ul class="library-list">{% for resource in track_context.resources %}<li class="library-row"><a href="{{ resource.url }}">{{ resource.title }}</a> <span class="badge">{{ resource.kind }}</span></li>{% endfor %}</ul></details>{% endif %}
+    </section>
+  {% endif %}
+
+  {% if attempts_after %}
+    <section class="page__section crosslink">
+      <h2 class="section-label">What you attempted after this</h2>
+      <p class="muted">Within 7 days of marking this complete, on a skill axis it touches.</p>
+      <ul class="crosslink__list">
+        {% for row in attempts_after %}
+          <li class="crosslink-row">
+            <a href="/attempt/{{ row.attempt.id }}/review" class="crosslink-row__title">{{ row.problem.title }}</a>
+            <span class="muted crosslink-row__meta">
+              {% if row.delta_hours < 24 %}+{{ row.delta_hours }}h{% else %}+{{ (row.delta_hours / 24) | round(1) }}d{% endif %}
+              ·
+              {% if row.passed %}<span class="badge">passed</span>{% else %}<span class="badge">didn't pass</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+{% if resource_reader_url(item.url or '') %}
+{% include '_resource_reader.html' %}
+<script src="/static/js/resource-reader.js?v={{ static_hash('js/resource-reader.js') }}" defer></script>
+{% endif %}
+
+{# BEN-135 recitation loop: audio-out playback + record-and-grade. Vanilla,
+   per the no-SPA constraint. Degrades quietly — no MediaRecorder → the
+   record button disables; no audio.json → the Listen control stays hidden. #}
+<script>
+(function () {
+  var root = document.getElementById('recite');
+  if (!root) return;
+  var cid = root.getAttribute('data-content-id');
+  var statusEl = root.querySelector('[data-recite-status]');
+  var resultsEl = root.querySelector('[data-recite-results]');
+  var recordBtn = root.querySelector('[data-recite-record]');
+  var pretestNote = root.querySelector('[data-recite-pretest-note]');
+
+  function mode() {
+    var checked = root.querySelector('input[name="recite-mode"]:checked');
+    return checked && checked.value === 'pretest' ? 'pretest' : 'review';
+  }
+  root.querySelectorAll('input[name="recite-mode"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      pretestNote.hidden = mode() !== 'pretest';
+    });
+  });
+
+  // --- audio-out: reveal only if the server has rendered audio ---
+  var audioWrap = root.querySelector('[data-recite-audio]');
+  var audioStatus = root.querySelector('[data-recite-audio-status]');
+  var listenBtn = root.querySelector('[data-recite-listen]');
+  if (window.fetch) {
+    fetch('/content/' + cid + '/audio.json').then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (m) {
+      if (m && m.available !== false && m.chunks && m.chunks.length) {
+        audioWrap.hidden = false;
+        listenBtn.addEventListener('click', function () { playChunks(m.chunks); });
+      }
+    }).catch(function () {});
+  }
+  function playChunks(chunks) {
+    var i = 0;
+    function next() {
+      if (i >= chunks.length) { audioStatus.textContent = 'done'; return; }
+      audioStatus.textContent = 'playing ' + (i + 1) + '/' + chunks.length;
+      var a = new Audio(chunks[i].url);
+      a.onended = function () { i++; next(); };
+      a.onerror = function () { i++; next(); };
+      a.play();
+    }
+    next();
+  }
+
+  // --- record + grade ---
+  var mediaRecorder = null, recording = false, blobs = [];
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    recordBtn.disabled = true;
+    statusEl.textContent = 'Recording is not supported in this browser.';
+    return;
+  }
+  recordBtn.addEventListener('click', function () {
+    if (recording) { mediaRecorder.stop(); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      blobs = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = function (e) { if (e.data.size) blobs.push(e.data); };
+      mediaRecorder.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        submit(new Blob(blobs, { type: 'audio/webm' }));
+      };
+      mediaRecorder.start();
+      recording = true;
+      recordBtn.textContent = 'Stop';
+      statusEl.textContent = 'Listening… explain it in your own words.';
+    }).catch(function () {
+      statusEl.textContent = 'Microphone permission is needed to recite.';
+    });
+  });
+
+  function submit(blob) {
+    recording = false;
+    recordBtn.textContent = 'Start reciting';
+    recordBtn.disabled = true;
+    statusEl.textContent = 'Transcribing and comparing to the source…';
+    var fd = new FormData();
+    fd.append('audio', blob, 'recite.webm');
+    fd.append('mode', mode());
+    fetch('/content/' + cid + '/recite', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () { statusEl.textContent = 'Something went wrong — your recording was not saved.'; })
+      .finally(function () { recordBtn.disabled = false; });
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render(data) {
+    statusEl.textContent = '';
+    resultsEl.hidden = false;
+    resultsEl.innerHTML = '';
+    if (data.error || data.method === 'skipped') {
+      resultsEl.appendChild(el('p', 'muted', data.detail || data.error_text ||
+        'Grading is unavailable right now — your recitation was still recorded.'));
+      return;
+    }
+    var missing = data.missing || [];
+    // Scheduling framing FIRST — what returns, never "you missed N".
+    if (missing.length) {
+      resultsEl.appendChild(el('p', 'recite__return',
+        missing.length + ' concept' + (missing.length === 1 ? '' : 's') +
+        ' will come back tomorrow.'));
+    } else {
+      resultsEl.appendChild(el('p', 'recite__return',
+        'Nothing to bring back sooner — this one held.'));
+    }
+    if ((data.covered || []).length) {
+      var cov = el('div', 'recite__group');
+      cov.appendChild(el('h3', 'recite__h', 'You held'));
+      var ul = el('ul', 'recite__chips');
+      data.covered.forEach(function (c) { ul.appendChild(el('li', 'recite__chip', c)); });
+      cov.appendChild(ul); resultsEl.appendChild(cov);
+    }
+    if (missing.length) {
+      var mg = el('div', 'recite__group');
+      mg.appendChild(el('h3', 'recite__h', 'Coming back'));
+      missing.forEach(function (m) {
+        var card = el('div', 'recite__miss');
+        card.appendChild(el('span', 'recite__miss-concept', m.concept));
+        if (m.where) card.appendChild(el('span', 'recite__miss-where', m.where));
+        if (m.prompt) card.appendChild(el('p', 'muted', m.prompt));
+        mg.appendChild(card);
+      });
+      resultsEl.appendChild(mg);
+    }
+    (data.misstated || []).forEach(function (m) {
+      var card = el('div', 'recite__miss');
+      card.appendChild(el('p', null, 'You said: ' + m.said));
+      card.appendChild(el('p', 'recite__actually', 'The text says: ' + m.actually));
+      resultsEl.appendChild(card);
+    });
+    if (data.open_question) {
+      var oq = el('p', 'recite__oq', data.open_question);
+      resultsEl.appendChild(oq);
+    }
+  }
+})();
+</script>
+
+{% endblock %}

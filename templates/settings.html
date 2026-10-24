@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% block title %}Tune your bench — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="settings">
+  <header class="page__head">
+    <h1 class="page__title">Tune the bench</h1>
+    <p class="page__meta">Retake the assessment when your bearings shift. Tighten accessibility to match your eyes and motion preferences. Pick a mentor voice. Reset to start fresh.</p>
+  </header>
+
+  <section class="settings__panel">
+    <h2>Skill profile</h2>
+    {% if latest_run %}
+      <p class="muted">
+        Latest assessment: {{ latest_run.completed_at.strftime("%Y-%m-%d %H:%M UTC") }}
+      </p>
+      <p class="muted">
+        Full pentagon + per-axis breakdown lives on <a class="action-link" href="/aim#stand">Aim → Where you stand</a>.
+      </p>
+    {% else %}
+      <p class="muted">No assessment on file yet.</p>
+    {% endif %}
+
+    <form method="post" action="/onboarding/start" class="settings__retake">
+      <button type="submit" class="primary">
+        {% if latest_run %}Retake the assessment{% else %}Take the initial assessment{% endif %}
+      </button>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Active initiative</h2>
+    <p class="muted">
+      Default initiative for everything you do on the bench — attempts,
+      content completions, reflections, writings. Each gets stamped with
+      this slug so <a href="/focus">/focus</a> can attribute activity to
+      the right card.
+      <br>
+      Leave empty to leave new activity unassigned. You can switch any
+      time; older rows keep whatever tag they had at write time.
+    </p>
+    <form method="post" action="/settings/initiative" class="settings__form">
+      <label class="settings__field">
+        <span class="settings__label">Default initiative</span>
+        <select name="active_initiative" class="settings__input">
+          <option value="" {% if not active_initiative %}selected{% endif %}>
+            — none (leave activity unassigned) —
+          </option>
+          {% for init in active_initiatives %}
+            <option value="{{ init.slug }}"
+                    {% if init.slug == active_initiative %}selected{% endif %}>
+              {{ init.title }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="settings__actions">
+        <button type="submit" class="primary">Save</button>
+        <a class="action-link muted" href="/focus">view /focus →</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Review voice</h2>
+    <p class="muted">
+      Per-submission review voice on the problem page defaults to your preference here.
+      Browse the roster — Hamming, Feynman, Petroski, Meadows, Franklin, Russell, Johnson, Wade
+      — to pick the lens that fits where you are this week.
+    </p>
+    <p>
+      <a class="action-link" href="/voices">Browse mentor voices →</a>
+    </p>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Profile</h2>
+    <p class="muted">Local single-user mode. Multi-user is reserved for v2.</p>
+    <div id="profile-readonly-view" {% if profile_errors %}hidden{% endif %}>
+      <ul class="settings__field-list">
+        <li><span class="settings__label">Display name</span><span class="settings__value">{{ display_name or 'not set' }}</span></li>
+        <li>
+          <span class="settings__label">Email</span>
+          <span class="settings__value">
+            {{ session_email or '(no email in token)' }}
+            <span class="muted">(managed by GitHub — <a href="https://github.com/settings/emails" target="_blank" rel="noopener">change in GitHub settings ↗</a>)</span>
+          </span>
+        </li>
+        <li><span class="settings__label">Time zone</span><span class="settings__value">{{ display_tz or 'system default' }}</span></li>
+      </ul>
+      <button type="button"
+              class="secondary settings__profile-edit"
+              id="profile-edit-button"
+              aria-label="Edit profile settings"
+              aria-controls="profile-edit-form"
+              aria-expanded="{% if profile_errors %}true{% else %}false{% endif %}">
+        Edit profile
+      </button>
+    </div>
+    <form method="post" action="/settings/profile" class="settings__form" id="profile-edit-form" {% if not profile_errors %}hidden{% endif %}>
+      <label class="settings__field">
+        <span>Display name</span>
+        <input type="text" name="display_name" id="profile-display-name" value="{{ display_name or '' }}" maxlength="80" placeholder="Li">
+      </label>
+      <div class="settings__field">
+        <span>Email</span>
+        <span>
+          {{ session_email or '(no email in token)' }}
+          <span class="muted">(managed by GitHub — <a href="https://github.com/settings/emails" target="_blank" rel="noopener">change in GitHub settings ↗</a>)</span>
+        </span>
+      </div>
+      <label class="settings__field {% if 'tz' in profile_errors %}settings__field--error{% endif %}" id="profile-tz-field">
+        <span>Time zone <span class="muted">(pick from IANA list — empty = system default)</span></span>
+        <select name="display_tz" id="profile-tz"
+                aria-invalid="{% if 'tz' in profile_errors %}true{% else %}false{% endif %}"
+                {% if 'tz' in profile_errors %}aria-describedby="tz-error"{% endif %}>
+          <option value="" {% if not display_tz %}selected{% endif %}>— System default —</option>
+          {% for group_label, zones in tz_groups %}
+            <optgroup label="{{ group_label }}">
+              {% for z in zones %}
+                <option value="{{ z }}" {% if display_tz == z %}selected{% endif %}>{{ z }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+        <span class="field-error" id="tz-error" role="alert" {% if 'tz' not in profile_errors %}hidden{% endif %}>Not a recognized IANA timezone. Pick from the dropdown — empty means "use system default".</span>
+      </label>
+      <div class="settings__form-actions">
+        <button type="submit" class="primary">Save profile</button>
+        <button type="button" class="secondary" id="profile-cancel-button">Cancel</button>
+      </div>
+    </form>
+    <script>
+      // Profile panel behavior:
+      // - default read-only summary + explicit Edit button
+      // - Edit reveals the form and focuses the first field
+      // - Cancel resets unsaved edits and returns focus to Edit
+      (function () {
+        var readonlyView = document.getElementById("profile-readonly-view");
+        var form = document.getElementById("profile-edit-form");
+        var editButton = document.getElementById("profile-edit-button");
+        var cancelButton = document.getElementById("profile-cancel-button");
+        var firstInput = document.getElementById("profile-display-name");
+        var tzField = document.getElementById("profile-tz-field");
+        var tzSelect = document.getElementById("profile-tz");
+        var tzError = document.getElementById("tz-error");
+        if (
+          !readonlyView ||
+          !form ||
+          !editButton ||
+          !cancelButton ||
+          !firstInput ||
+          !tzField ||
+          !tzSelect ||
+          !tzError
+        ) return;
+
+        function setEditMode(on, opts) {
+          readonlyView.hidden = on;
+          form.hidden = !on;
+          editButton.setAttribute("aria-expanded", on ? "true" : "false");
+          if (on && opts && opts.focusFirst) {
+            firstInput.focus();
+          }
+        }
+
+        function clearValidation() {
+          tzField.classList.remove("settings__field--error");
+          tzError.setAttribute("hidden", "");
+          tzSelect.setAttribute("aria-invalid", "false");
+        }
+
+        editButton.addEventListener("click", function () {
+          setEditMode(true, { focusFirst: true });
+        });
+
+        cancelButton.addEventListener("click", function () {
+          form.reset();
+          clearValidation();
+          setEditMode(false);
+          editButton.focus();
+        });
+
+        if (!form.hidden) {
+          setEditMode(true, { focusFirst: true });
+        } else {
+          setEditMode(false);
+          clearValidation();
+        }
+      })();
+    </script>
+  </section>
+
+{% import "_bubbles.html" as b with context %}
+  {{ b.slot('provider') }}
+  <section class="settings__panel">
+    <h2>AI provider</h2>
+    <p class="muted">
+      Who pays for the AI features (hints, code review, reflect, JD parse).
+      The bench-provided key has a daily token cap; your own key has no cap
+      here — your provider bills you directly.
+    </p>
+    {% if llm_error == "key" %}
+      <p class="muted" role="alert"><strong>An API key is required</strong> for that provider — nothing was saved.</p>
+    {% elif llm_error == "url" %}
+      <p class="muted" role="alert"><strong>Gateway URL must start with https://</strong> — nothing was saved.</p>
+    {% endif %}
+    <form method="post" action="/settings/llm" class="settings__form">
+      <label class="settings__field" for="llm-provider-select">
+        <strong>Provider</strong>
+        <select id="llm-provider-select" name="llm_provider">
+          <option value="bench" {% if llm_provider == "bench" %}selected{% endif %}>
+            Bench-provided — no setup, daily cap applies
+          </option>
+          <option value="anthropic" {% if llm_provider == "anthropic" %}selected{% endif %}>
+            Anthropic — my own API key
+          </option>
+          <option value="omniroute" {% if llm_provider == "omniroute" %}selected{% endif %}>
+            OmniRoute / Anthropic-compatible gateway — my key + URL
+          </option>
+        </select>
+      </label>
+      <label class="settings__field" for="llm-api-key">
+        <strong>API key</strong>
+        <span class="muted">
+          {% if llm_key_hint %}
+            A key ending in <code>{{ llm_key_hint }}</code> is saved. Leave blank to keep it; enter a new one to replace it.
+          {% else %}
+            Stored encrypted (Supabase Vault); never shown again after saving. Ignored for the bench-provided option.
+          {% endif %}
+        </span>
+        <input id="llm-api-key" type="password" name="llm_api_key"
+               autocomplete="off" spellcheck="false"
+               placeholder="{% if llm_key_hint %}saved · ends in {{ llm_key_hint }}{% else %}sk-...{% endif %}">
+      </label>
+      <label class="settings__field" for="llm-base-url">
+        <strong>Gateway URL</strong>
+        <span class="muted">Only for the gateway option — the https origin of your OmniRoute (or other Anthropic-compatible) endpoint. It must serve Claude models.</span>
+        <input id="llm-base-url" type="url" name="llm_base_url"
+               placeholder="https://my-omniroute.example.com" value="{{ llm_base_url }}">
+      </label>
+      <button type="submit" class="primary">Save AI provider</button>
+    </form>
+  </section>
+
+  {{ b.slot('linear') }}
+  <section class="settings__panel">
+    <h2>Linear sync</h2>
+    <p class="muted">
+      Push research-agenda items into your own Linear workspace and pull
+      their status back — the same operating discipline a lab runs on.
+      Needs a <a href="https://linear.app/settings/api" target="_blank" rel="noopener">personal API key</a>.
+    </p>
+    {% if linear_error %}
+      <p class="muted" role="alert"><strong>{{ linear_error }}</strong></p>
+    {% endif %}
+    {% if linear_connected %}
+      <p class="muted" role="status">
+        Connected as <strong>{{ linear_account_label }}</strong>
+        {% if linear_team_name %}· team <code>{{ linear_team_name }}</code>{% endif %}.
+        Push items from the <a href="/mira/agenda">agenda</a>.
+      </p>
+      <form method="post" action="/settings/linear/disconnect">
+        <button type="submit" class="muted-button">Disconnect (removes the stored key)</button>
+      </form>
+    {% else %}
+      <form method="post" action="/settings/linear" class="settings__form">
+        <label class="settings__field" for="linear-api-key">
+          <strong>Personal API key</strong>
+          <span class="muted">Stored encrypted (Supabase Vault); never shown again after saving.</span>
+          <input id="linear-api-key" type="password" name="linear_api_key"
+                 autocomplete="off" spellcheck="false" placeholder="lin_api_..." required>
+        </label>
+        <label class="settings__field" for="linear-team-key">
+          <strong>Team key</strong>
+          <span class="muted">The prefix on your issue ids, e.g. <code>BEN</code>. Leave blank if the key sees only one team.</span>
+          <input id="linear-team-key" type="text" name="linear_team_key" placeholder="BEN">
+        </label>
+        <button type="submit" class="primary">Connect Linear</button>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="settings__panel">
+    <h2>Theme</h2>
+    <p class="muted">How the bench looks. Applied on every page load and stored in <code>users.settings_json</code>.</p>
+    <form method="post" action="/settings/theme" class="settings__form">
+      <label class="settings__field" for="theme-select">
+        <strong>Theme</strong>
+        {# FRONTEND-1a proving island: hydrates into a live-preview
+           select (change = apply theme immediately, Save commits).
+           The fallback below is the identical plain select — no JS,
+           no build, pre-hydration: zero behavior lost. #}
+        <div data-island="theme-preview"
+             data-props='{"themes": {{ themes | list | tojson }}, "current": {{ theme | tojson }}}'>
+          <select id="theme-select" name="theme">
+            {% for key, label, blurb in themes %}
+              <option value="{{ key }}" {% if key == theme %}selected{% endif %}>{{ label }} — {{ blurb }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </label>
+      <button type="submit" class="primary">Save theme</button>
+    </form>
+    {% if theme == "hyperbolic" %}
+      {# FRONTEND-1b: glassiness — how frosted the chamber's panels are.
+         Island live-tunes --glass-alpha/--glass-blur while dragging and
+         auto-saves; this fallback form persists identically without JS. #}
+      <form method="post" action="/settings/glass" class="settings__form">
+        <label class="settings__field" for="glass-level">
+          <strong>Glassiness</strong>
+          <span class="muted">How frosted the chamber's floating panels are. 50 is the default.</span>
+          <div data-island="glass-slider" data-props='{"level": {{ glass_level | tojson }}}'>
+            <input id="glass-level" type="range" name="glass_level"
+                   min="0" max="100" step="5" value="{{ glass_level }}">
+            <button type="submit" class="primary">Save glassiness</button>
+          </div>
+        </label>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="settings__panel">
+    <h2>Daily mode</h2>
+    <p class="muted">How today's queue is ordered. The onboarding assessment recommends one; override here any time.</p>
+    <form method="post" action="/settings/daily-mode" class="settings__form">
+      {% for key, label, blurb in daily_modes %}
+        <label class="settings__checkbox">
+          <input type="radio" name="daily_mode" value="{{ key }}" {% if key == daily_mode %}checked{% endif %}>
+          <span>
+            <strong>{{ label }}</strong>
+            <span class="muted">{{ blurb }}</span>
+          </span>
+        </label>
+      {% endfor %}
+      <button type="submit" class="primary">Save mode</button>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2 class="settings__title">Hyperfocus</h2>
+    <p class="settings__hint">
+      Strips the shell to the one thing you're doing: no nav groups, no inbox
+      badge, no news. The command palette narrows to "next" and "exit". Nothing
+      is deleted &mdash; turn it off and everything comes back.
+    </p>
+    <form method="post" action="/settings/hyperfocus" class="settings__form">
+      <input type="hidden" name="enabled" value="0">
+      <label class="settings__check">
+        <input type="checkbox" name="enabled" value="1" {% if hyperfocus %}checked{% endif %}>
+        <span>One decision at a time</span>
+      </label>
+      <button type="submit" class="btn">Save</button>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Accessibility</h2>
+    <p class="muted">Local preferences that affect rendering. Stored in <code>users.settings_json</code>.</p>
+    <form method="post" action="/settings/accessibility" class="settings__form">
+      <label class="settings__checkbox">
+        <input type="checkbox" name="reduce_motion" value="1" {% if a11y.reduce_motion %}checked{% endif %}>
+        <span>
+          <strong>Reduce motion</strong>
+          <span class="muted">Disable timer animations, panel transitions, value-polygon glow.</span>
+        </span>
+      </label>
+      <label class="settings__checkbox">
+        <input type="checkbox" name="larger_text" value="1" {% if a11y.larger_text %}checked{% endif %}>
+        <span>
+          <strong>Larger text</strong>
+          <span class="muted">Bump base font from 16px → 17.5px across the app.</span>
+        </span>
+      </label>
+      <label class="settings__checkbox">
+        <input type="checkbox" name="high_contrast" value="1" {% if a11y.high_contrast %}checked{% endif %}>
+        <span>
+          <strong>Higher contrast</strong>
+          <span class="muted">Stronger borders, darker muted text. Useful on glare-prone displays.</span>
+        </span>
+      </label>
+      <button type="submit" class="primary">Save preferences</button>
+    </form>
+
+    {# First-visit tips live with the a11y toggles: same class of
+       preference — how much the interface talks to you. #}
+    <form method="post" action="/settings/bubbles/enabled"
+          hx-post="/settings/bubbles/enabled" hx-swap="none"
+          class="settings__form">
+      <input type="hidden" name="next" value="{{ request.url.path }}">
+      <input type="hidden" name="enabled" value="{{ '0' if tips_enabled else '1' }}">
+      <label class="settings__field" for="ob-tips">
+        <strong>First-visit tips</strong>
+        <span class="muted">One short tip per new surface, at most three per
+        page. Off hides them everywhere; already-dismissed tips do not come
+        back either way.</span>
+      </label>
+      <button type="submit" id="ob-tips" class="muted-button"
+              aria-pressed="{{ 'true' if tips_enabled else 'false' }}">
+        {{ 'On — turn off' if tips_enabled else 'Off — turn on' }}
+      </button>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Weekly reflection (Hamming mode)</h2>
+    <p class="muted">
+      Once a week, pull the last 7 days of attempts, content, writings
+      and hint usage into a prompt set. Anti-sycophancy by design — if
+      the data is sparse, the prompts say so.
+    </p>
+    <p><a class="action-link" href="/reflect">Open reflection →</a></p>
+  </section>
+
+  <section class="settings__panel settings__panel--session">
+    <h2>Session</h2>
+    <p class="muted">
+      Signed in as <code>{{ session_email or '(no email in token)' }}</code>
+      via GitHub OAuth. Sign out clears your session cookie on this
+      browser; your account and progress stay intact, and you can sign
+      back in from <a class="action-link" href="/login">/login</a>.
+    </p>
+    <form method="post" action="/auth/logout" class="settings__signout">
+      <button type="submit" class="secondary">Sign out</button>
+    </form>
+  </section>
+
+  <section class="settings__panel">
+    <h2>Runtime configuration</h2>
+    <p class="muted">
+      Runtime knobs live in <code>config.toml</code>. Edit and restart.
+      Highlights:
+    </p>
+    <ul>
+      <li>Plan gate: <code>{{ config.em.plan_gate_chars }}</code> characters before the Implement editor unlocks.</li>
+      <li>EM enabled by default: <code>{{ config.em.default_enabled }}</code></li>
+      <li>Session size: <code>{{ config.ui.session_size }}</code> problem(s) per scheduled session.</li>
+      <li>Warmup recency floor: <code>{{ config.warmup.recency_floor_days }}</code> days.</li>
+    </ul>
+  </section>
+
+  {# Danger zone — destructive actions live at the bottom, separated
+     visually, behind their own confirmation pages. Two distinct
+     actions: reset progress (keeps JDs/writings/feedback) and full
+     account deletion (wipes everything + signs out). #}
+  <section class="settings__panel settings__panel--danger">
+    <h2>Danger zone</h2>
+    <p class="muted">
+      Destructive actions. Each one routes to a confirmation page that
+      previews exactly what will be deleted before you commit.
+    </p>
+
+    <div class="settings__danger-row">
+      <div class="settings__danger-text">
+        <strong>Reset all progress</strong>
+        <p class="muted small">
+          Deletes attempts, reflections, sessions, assessment runs,
+          review state, and content progress. Keeps JDs, writings,
+          feedback, and credentials so you don't lose authored work.
+        </p>
+      </div>
+      <a class="btn-danger" href="/settings/reset">Reset progress →</a>
+    </div>
+
+    <div class="settings__danger-row">
+      <div class="settings__danger-text">
+        <strong>Delete my account</strong>
+        <p class="muted small">
+          Permanently wipes everything tied to your user — including
+          writings, JDs, feedback, credentials, and the practice data
+          above. Signs you out. Irreversible.
+        </p>
+      </div>
+      <a class="btn-danger" href="/settings/delete-account">Delete account →</a>
+    </div>
+  </section>
+</article>
+
+{% endblock %}

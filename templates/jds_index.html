@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}JDs — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--jds">
+  <header class="page__head">
+    <h1 class="page__title">JDs</h1>
+    <p class="page__meta">
+      Paste a job description; the parser maps it to the 10 skill axes
+      and a curated signal-tag vocabulary. The active JD biases your
+      daily Compose problems toward what the role actually wants.
+    </p>
+  </header>
+
+  {% if active_jd %}
+    <section class="page__section">
+      <h2 class="section-label">Active</h2>
+      <div class="jd-card jd-card--active">
+        <div class="jd-card__head">
+          <span class="jd-card__title">{{ active_jd.title | jd_title }}</span>
+          {% if active_jd.org %}<span class="muted">· {{ active_jd.org }}</span>{% endif %}
+        </div>
+        {% if active_jd.summary %}<p class="jd-card__summary">{{ active_jd.summary }}</p>{% endif %}
+        <p class="jd-card__actions">
+          <a class="muted" href="/jds/{{ active_jd.id }}">open detail →</a>
+          <form method="post" action="/jds/clear-active" style="display:inline; margin-left: var(--space-3)">
+            <button type="submit" class="muted-button">clear active</button>
+          </form>
+        </p>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    <h2 class="section-label">Paste a new JD</h2>
+    <form class="jd-upload" method="post" action="/jds">
+      <label class="jd-upload__field">
+        <span>Job description text <em class="muted">— or paste the URL of the listing; we'll fetch title + org + body</em></span>
+        <textarea name="source_text" rows="14" required placeholder="Paste the full JD text, OR a URL like https://www.anthropic.com/jobs/4242 — we autodetect the title and org from the page."></textarea>
+      </label>
+      <div class="jd-upload__row">
+        <label class="jd-upload__field">
+          <span>Title (optional — autodetected from first line)</span>
+          <input type="text" name="title" maxlength="200" placeholder="e.g. Research Engineer, Interpretability">
+        </label>
+        <label class="jd-upload__field">
+          <span>Org (optional)</span>
+          <input type="text" name="org" maxlength="100" placeholder="e.g. Anthropic">
+        </label>
+      </div>
+      <button type="submit" class="primary">Parse &amp; activate</button>
+    </form>
+  </section>
+
+  {% if jds %}
+    <section class="page__section">
+      <h2 class="section-label">All JDs</h2>
+      <ul class="jd-list">
+        {% for j in jds %}
+          <li class="jd-row">
+            <a class="jd-row__main" href="/jds/{{ j.id }}">
+              <span class="jd-row__title">{{ j.title | jd_title }}</span>
+              {% if j.org %}<span class="muted">{{ j.org }}</span>{% endif %}
+              <span class="jd-row__meta">
+                {% if active_jd and active_jd.id == j.id %}<span class="badge badge--em">active</span>{% endif %}
+                {% for t in j.signal_tags[:5] %}<span class="tag">{{ t }}</span>{% endfor %}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

@@ -1,0 +1,621 @@
+{% set a11y = (request.state.user_settings or {}).get('a11y') or {} %}
+{# BEN-142 — hyperfocus. Same shape as the a11y attributes: a flag on
+   <html> that CSS keys off. Subtraction only; no route or layout of
+   its own, so nothing can be stranded behind it. #}
+{% set hyperfocus = (request.state.user_settings or {}).get('hyperfocus') %}
+{% set user_theme = (request.state.user_settings or {}).get('theme') %}
+{# FRONTEND-1b: shared glassiness level (0-100, default 50 = the shipped
+   look). Derives --glass-alpha / --glass-blur inline so first paint is
+   already at the saved level; the GlassSlider island live-tunes the
+   same two vars. Only meaningful under the hyperbolic theme. #}
+{% set glass_level = (request.state.user_settings or {}).get('glass_level') %}
+<!DOCTYPE html>
+<html lang="en"{% if user_theme %} data-theme="{{ user_theme }}"{% endif %}{% if user_theme == 'hyperbolic' and glass_level is not none %} style="--glass-alpha: {{ '%.2f' | format(0.25 + 0.006 * glass_level) }}; --glass-blur: {{ '%.0f' | format(4 + 0.28 * glass_level) }}px"{% endif %}{% if a11y.reduce_motion %} data-reduce-motion="1"{% endif %}{% if a11y.larger_text %} data-larger-text="1"{% endif %}{% if a11y.high_contrast %} data-high-contrast="1"{% endif %}{% if hyperfocus %} data-hyperfocus="1"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bench">
+  <meta name="theme-color" content="#0A0B0D">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+  <script>
+    (function(){
+      try {
+        var d = document.documentElement;
+        // A saved theme is server-rendered onto <html> above. It wins —
+        // never clobber it, or a custom theme flashes back to default.
+        if (d.getAttribute("data-theme")) return;
+        var t = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        // Any stored theme name applies (not just "dark"), so the
+        // picker keeps working for signed-out/pre-hydration loads.
+        if (t) { d.setAttribute("data-theme", t); }
+        else if (prefersDark) { d.setAttribute("data-theme", "dark"); }
+      } catch (e) {}
+    })();
+  </script>
+  <script>
+    // Tiny error ring buffer for the feedback widget's diagnostics.
+    // Installed in <head> so it catches errors from every later script.
+    (function(){
+      var buf = window.__benchErrs = [];
+      function push(msg){
+        try {
+          buf.push(String(msg).slice(0, 300));
+          if (buf.length > 5) buf.shift();
+        } catch (e) {}
+      }
+      window.addEventListener("error", function(e){
+        push((e.message || "script error") + (e.filename ? " @ " + e.filename.split("/").pop() + ":" + e.lineno : ""));
+      });
+      window.addEventListener("unhandledrejection", function(e){
+        push("unhandled rejection: " + (e.reason && (e.reason.message || e.reason)));
+      });
+    })();
+  </script>
+  <title>{% block title %}Li's Bench{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠</text></svg>">
+  {# Fonts — match portfolio (libearden.dev). Inter for body, Geist Mono
+     for code + eyebrows + tag labels. Preconnect first so the
+     font-display:swap doesn't show FOUT longer than needed. #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+  {# Design tokens shared with libearden.dev — single source of truth
+     for color/type/geometry. Imported BEFORE main.css so main.css can
+     alias older variable names (--brand-color, etc.) to these. #}
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_hash('css/tokens.css') }}">
+  <link rel="stylesheet" href="/static/css/motion.css?v={{ static_hash('css/motion.css') }}">
+  <link rel="stylesheet" href="/static/css/main.css?v={{ static_hash('css/main.css') }}">
+  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+  <script src="/static/js/autosave.js?v={{ static_hash('js/autosave.js') }}" defer></script>
+  <script src="/static/js/voice-note.js?v={{ static_hash('js/voice-note.js') }}" defer></script>
+  <script src="/static/js/bubbles.js?v={{ static_hash('js/bubbles.js') }}" defer></script>
+  <script src="/static/js/palette.js?v={{ static_hash('js/palette.js') }}" defer></script>
+  {# FRONTEND-1a: the Svelte island registry. asset() resolves to the
+     hashed build output (or the Vite dev server under LIS_VITE_DEV=1);
+     when no build exists — a Python-only checkout — it returns None
+     and this tag is skipped: every island renders its Jinja fallback
+     and the page works exactly as before. #}
+  {% set islands_src = asset('static/src/islands/index.ts') %}
+  {% if islands_src %}<script type="module" src="{{ islands_src }}"></script>{% endif %}
+</head>
+<body data-autosave-user="{{ request.state.user_session.user_id if request.state.user_session else '' }}">
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Li's Bench</a>
+      {# Subtle "alpha · invite-only" pill on public-facing pages so
+         conference visitors and people who land on the URL via a
+         talk or write-up know what this is. Signed-in users don't
+         see it — they already know. #}
+      {% if is_alpha_view %}
+        <span class="alpha-pill" title="This is an alpha release. Access is currently invite-only.">
+          alpha · invite-only
+        </span>
+        <a class="muted" href="https://libearden.dev/about"
+           target="_blank" rel="noopener" title="Operator's about page on libearden.dev">
+          about ↗
+        </a>
+        <a class="muted" href="https://docs.libearden.dev/"
+           target="_blank" rel="noopener" title="Full documentation site (docs.libearden.dev)">
+          docs ↗
+        </a>
+      {% endif %}
+      {# Hybrid grouped nav (WS2 prototype variant C, operator pick
+         2026-05-28). Five top-level affordances grouped by job, per
+         the WS3 brief: Today (single link) + Prep + Ingest + Produce
+         + Assess (each a dropdown). Relationships will appear when
+         /connecting lands in WS6. Settings + profile + inbox stay in
+         header-controls below; no command palette yet (WS5). #}
+      <nav class="header-nav nav--hybrid" aria-label="Primary">
+        <a class="header-nav__link {% if nav_section in ('drill', 'today') %}is-active{% endif %}" href="/">Today</a>
+
+        <details class="nav__group">
+          <summary class="nav__group-trigger {% if nav_section in ('prep', 'problem', 'warmup', 'voices', 'tracks') %}is-active{% endif %}">Prep</summary>
+          <div class="nav__group-dropdown" aria-label="Prep menu">
+            <a class="nav__group-link" href="/today/next">Continue next step</a>
+            <a class="nav__group-link" href="/warmup">Warmup</a>
+            <a class="nav__group-link" href="/voices">Voices</a>
+            <a class="nav__group-link" href="/tracks">Tracks</a>
+          </div>
+        </details>
+
+        <details class="nav__group">
+          <summary class="nav__group-trigger {% if nav_section in ('ingest', 'learn', 'library', 'news') %}is-active{% endif %}">Ingest</summary>
+          <div class="nav__group-dropdown" aria-label="Ingest menu">
+            <a class="nav__group-link" href="/library">Library</a>
+            <a class="nav__group-link" href="/papers">Papers — how far you got</a>
+            <a class="nav__group-link" href="/news">News</a>
+          </div>
+        </details>
+
+        <details class="nav__group">
+          <summary class="nav__group-trigger {% if nav_section in ('produce', 'write', 'reflect', 'decisions') %}is-active{% endif %}">Produce</summary>
+          <div class="nav__group-dropdown" aria-label="Produce menu">
+            <a class="nav__group-link" href="/writings">Writings</a>
+            <a class="nav__group-link" href="/decisions">Decisions</a>
+            <a class="nav__group-link" href="/reflect">Reflect</a>
+          </div>
+        </details>
+
+        <details class="nav__group">
+          <summary class="nav__group-trigger {% if nav_section in ('assess', 'aim', 'skills', 'readiness', 'focus', 'signal') %}is-active{% endif %}">Assess</summary>
+          <div class="nav__group-dropdown" aria-label="Assess menu">
+            <a class="nav__group-link" href="/aim">Aim — skills + JDs + credentials</a>
+            <a class="nav__group-link" href="/readiness">Readiness</a>
+            <a class="nav__group-link" href="/signal">Signal — what a selector can see</a>
+            <a class="nav__group-link" href="/focus">Focus</a>
+          </div>
+        </details>
+
+        {# Connect — single-link affordance (WS6 brought it online
+           with /connecting as the only surface). Stays a link
+           instead of a dropdown until there's a second route to put
+           under it. Operator renamed "Relationships" → "Connect"
+           2026-05-28 — action-verb framing matches the rest of the
+           nav (Today, Prep, Ingest, Produce, Assess). #}
+        <a class="header-nav__link {% if nav_section == 'connecting' %}is-active{% endif %}" href="/connecting">Connect</a>
+
+        {# Mira — the research-mentor surface (MIRA Phase 1a). Single
+           top-level link like Connect; stays a link until a second
+           MIRA route (agenda / KB) earns a dropdown.
+           Open to every signed-in user since v2.1 slice 3 (per-user
+           spend caps + BYO keys made the 2026-07-21 admin gate
+           obsolete; LIS_MIRA_ADMIN_ONLY=1 is the emergency re-gate).
+           Session-guarded so public pages keep the six-affordance set. #}
+        {% if request.state.user_session %}
+        <a class="header-nav__link {% if nav_section == 'mira' %}is-active{% endif %}" href="/mira">Mira</a>
+        {% endif %}
+
+        {# Command palette trigger (WS5, progressive enhancement).
+           The visible nav is the canonical affordance — every route
+           is reachable from one of the groups above. This hint just
+           tells the operator "you can also type to jump." Click =
+           open palette; Cmd+K shortcut handled by palette.js. The
+           nav still works with JS off; this button is then a no-op. #}
+        <button type="button" class="nav__palette-hint" data-palette-trigger
+                aria-label="Open command palette (Cmd+K)"
+                title="Jump anywhere (⌘K)">
+          <span>jump to</span>
+          <kbd>⌘K</kbd>
+        </button>
+      </nav>
+      {% if hyperfocus %}
+      <form class="hyperfocus-exit" method="post" action="/settings/hyperfocus">
+        <input type="hidden" name="enabled" value="0">
+        <input type="hidden" name="next" value="{{ request.url.path }}">
+        <button type="submit" class="hyperfocus-exit__btn" title="Leave hyperfocus (everything comes back)">
+          <span class="hyperfocus-exit__dot" aria-hidden="true"></span>
+          hyperfocus &middot; exit
+        </button>
+      </form>
+      {% endif %}
+      <div class="header-controls">
+        {% if request.state.user_session %}
+          {% set session_email = request.state.user_session.email or '(no email in token)' %}
+          {% set profile_initial = (session_email[:1] or '?')|upper %}
+          <div class="profile-menu" data-profile-menu>
+            <button
+              class="profile-menu__trigger"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="header-profile-menu"
+            >
+              <span class="profile-menu__initial" aria-hidden="true">{{ profile_initial }}</span>
+              <span class="profile-menu__trigger-label">Account</span>
+            </button>
+            <div class="profile-menu__dropdown" id="header-profile-menu" role="menu" aria-label="Profile menu" hidden>
+              <p class="profile-menu__signed-in">
+                Signed in as <span class="profile-menu__email">{{ session_email }}</span>
+              </p>
+              <a class="profile-menu__item" role="menuitem" href="/settings">Settings</a>
+              <a class="profile-menu__item" role="menuitem"
+                 href="https://docs.libearden.dev/"
+                 target="_blank" rel="noopener">Documentation ↗</a>
+              {% if request.state.is_admin %}
+                {# Feedback inbox lives in the top-nav icon now (see below);
+                   omitted here to avoid duplicate affordances. #}
+                <p class="profile-menu__section">Admin</p>
+                <a class="profile-menu__item" role="menuitem" href="/admin/access-requests">Access requests</a>
+                <a class="profile-menu__item" role="menuitem" href="/admin/diag/recent-events">Recent events</a>
+              {% endif %}
+              <hr class="profile-menu__separator">
+              <form method="post" action="/auth/logout" class="profile-menu__signout">
+                <button class="profile-menu__item profile-menu__item--button" role="menuitem" type="submit">Sign out</button>
+              </form>
+            </div>
+          </div>
+          {# Admin-only: feedback-inbox icon. Sits between the profile
+             menu and the theme toggle. Single-click takes the operator
+             to /feedback/inbox (the read surface for the floating
+             feedback widget below). Hidden from non-admin sessions.
+             Badge: open-item count, rendered only when > 0. #}
+          {% if request.state.is_admin %}
+            {% set fb_open = request.state.fb_open_count or 0 %}
+            <a class="header-icon{% if fb_open > 0 %} header-icon--has-badge{% endif %}"
+               href="/feedback/inbox"
+               aria-label="Feedback inbox{% if fb_open > 0 %} ({{ fb_open }} open){% endif %}"
+               title="Feedback inbox{% if fb_open > 0 %} — {{ fb_open }} open{% endif %}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round"
+                   aria-hidden="true">
+                <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+                <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+              </svg>
+              {% if fb_open > 0 %}
+                <span class="header-icon__badge" aria-hidden="true">{{ fb_open }}</span>
+              {% endif %}
+            </a>
+          {% endif %}
+        {% endif %}
+        {# Theme is chosen in /settings (persisted per user). The old
+           sun/moon toggle flipped to a `light` palette that no longer
+           exists after the 2026-05-27 dark-only alignment, so it only
+           produced a degraded dark. Removed in favour of the picker. #}
+      </div>
+    </div>
+  </header>
+  {# `main_class` lets per-page templates narrow the container without
+     touching the header (which keeps full width for the nav). Default
+     to empty = the standard 1080px container. Home + reading-heavy
+     pages set `container--narrow` (760px) for better prose density. #}
+  <main class="container {% block main_class %}{% endblock %}">
+    {% block body %}{% endblock %}
+  </main>
+  {% import "_bubbles.html" as bubble_forms with context %}
+  {{ bubble_forms.dismissal_forms() }}
+
+  {# Floating feedback widget — present on every page so the user can
+     drop typed feedback with the URL + theme + viewport auto-captured.
+     Persists to /feedback; each user has a separate optional markdown mirror. #}
+  <div class="fb-fab" id="fb-fab" aria-hidden="false">
+    <button type="button" class="fb-fab__open" id="fb-fab-open" aria-controls="fb-panel" aria-expanded="false" title="Leave feedback (⌘+/)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span class="fb-fab__label">Feedback</span>
+    </button>
+    <form class="fb-panel" id="fb-panel" data-feedback-user-id="{{ request.state.user_session.user_id if request.state.user_session else '' }}" method="post" action="/feedback" enctype="multipart/form-data" hx-post="/feedback" hx-sync="this:drop" hx-target="#fb-status" hx-swap="innerHTML" hx-encoding="multipart/form-data" role="dialog" aria-label="Leave feedback">
+      <header class="fb-panel__head">
+        <strong>Feedback for this page</strong>
+        <button type="button" class="fb-panel__close" id="fb-panel-close" aria-label="Close">×</button>
+      </header>
+      <p class="fb-panel__url muted" id="fb-panel-url"></p>
+      <label class="form-field__label" for="fb-body">Your feedback</label>
+      <p class="form-field__hint">Report text may become a public GitHub issue. Keep private details out; images stay in your feedback inbox.</p>
+      <textarea name="body" id="fb-body" rows="5" placeholder="What's off? What's missing? What surprised you? (paste a screenshot to attach it)" required></textarea>
+      <input type="hidden" name="url" id="fb-url">
+      <input type="hidden" name="page_title" id="fb-title">
+      <input type="hidden" name="theme" id="fb-theme">
+      <input type="hidden" name="viewport_width" id="fb-vw">
+      <div class="fb-panel__attach">
+        <label class="fb-panel__attach-label" for="fb-images">
+          <span aria-hidden="true">🖼</span> attach images
+          <input type="file" name="images" id="fb-images" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+        </label>
+        <span class="muted fb-panel__attach-list" id="fb-attach-list" aria-live="polite"></span>
+      </div>
+      <label class="fb-panel__diag">
+        <input type="checkbox" name="_include_diag" id="fb-diag">
+        <span class="muted">include diagnostics (browser, viewport, error count)</span>
+      </label>
+      <div id="fb-status" class="fb-status" aria-live="polite"></div>
+      <footer class="fb-panel__foot">
+        <span class="muted fb-panel__hint">⌘+Enter to send · text autosaved</span>
+        <button type="submit" class="primary">Send</button>
+      </footer>
+    </form>
+  </div>
+
+  <script>
+    (function(){
+      var menuRoot = document.querySelector("[data-profile-menu]");
+      if (!menuRoot) return;
+
+      var trigger = menuRoot.querySelector(".profile-menu__trigger");
+      var menu = menuRoot.querySelector(".profile-menu__dropdown");
+      if (!trigger || !menu) return;
+
+      function isOpen(){
+        return trigger.getAttribute("aria-expanded") === "true";
+      }
+
+      function openMenu(){
+        menuRoot.classList.add("is-open");
+        trigger.setAttribute("aria-expanded", "true");
+        menu.removeAttribute("hidden");
+      }
+
+      function closeMenu(){
+        menuRoot.classList.remove("is-open");
+        trigger.setAttribute("aria-expanded", "false");
+        menu.setAttribute("hidden", "");
+      }
+
+      function focusFirstItem(){
+        var first = menu.querySelector("a[href], button:not([disabled])");
+        if (first) first.focus();
+      }
+
+      trigger.addEventListener("click", function(){
+        if (isOpen()) {
+          closeMenu();
+          return;
+        }
+        openMenu();
+      });
+
+      trigger.addEventListener("keydown", function(e){
+        if (e.key !== "ArrowDown" && e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        if (!isOpen()) openMenu();
+        focusFirstItem();
+      });
+
+      document.addEventListener("keydown", function(e){
+        if (e.key !== "Escape" || !isOpen()) return;
+        closeMenu();
+        trigger.focus();
+      });
+
+      document.addEventListener("click", function(e){
+        if (isOpen() && !menuRoot.contains(e.target)) closeMenu();
+      });
+    })();
+  </script>
+  <script>
+    (function(){
+      var fab = document.getElementById("fb-fab");
+      var openBtn = document.getElementById("fb-fab-open");
+      var closeBtn = document.getElementById("fb-panel-close");
+      var panel = document.getElementById("fb-panel");
+      var ta = document.getElementById("fb-body");
+      var urlField = document.getElementById("fb-url");
+      var titleField = document.getElementById("fb-title");
+      var themeField = document.getElementById("fb-theme");
+      var vwField = document.getElementById("fb-vw");
+      var urlEcho = document.getElementById("fb-panel-url");
+      var statusBox = document.getElementById("fb-status");
+      // Never restore the old unscoped key: its owner cannot be established.
+      var STORAGE_KEY = "lisbench.fb.draft." + (panel.dataset.feedbackUserId || "signed-out");
+      var sending = false;
+      var submittedBody = "";
+      var submittedFiles = [];
+      var sendButton = panel.querySelector('button[type="submit"]');
+
+      function finishRequest(){
+        sending = false;
+        if (sendButton) sendButton.disabled = false;
+        panel.removeAttribute("aria-busy");
+      }
+      panel.addEventListener("htmx:beforeRequest", function(e){
+        if (sending) { e.preventDefault(); return; }
+        sending = true;
+        submittedBody = ta.value;
+        submittedFiles = Array.prototype.slice.call(imgInput.files || []);
+        if (sendButton) sendButton.disabled = true;
+        panel.setAttribute("aria-busy", "true");
+      });
+
+      function readContext(){
+        return {
+          url: window.location.pathname,
+          pageTitle: document.title,
+          // No attribute = the built-in dark default; otherwise report
+          // the actual theme key (light, hyperbolic, ...).
+          theme: document.documentElement.dataset.theme || "dark",
+          viewportWidth: window.innerWidth,
+        };
+      }
+      function syncContext(){
+        var context = readContext();
+        urlField.value = context.url;
+        titleField.value = context.pageTitle;
+        themeField.value = context.theme;
+        vwField.value = context.viewportWidth;
+        urlEcho.textContent = context.url + " · " + context.theme;
+        return context;
+      }
+      function restoreDraft(){
+        if (ta.value) return;
+        try {
+          var saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) ta.value = saved;
+        } catch(_) {}
+      }
+      function open(){
+        fab.classList.add("fb-fab--open");
+        openBtn.setAttribute("aria-expanded", "true");
+        syncContext();
+        restoreDraft();
+        if (ta) ta.focus();
+      }
+      function close(){
+        fab.classList.remove("fb-fab--open");
+        openBtn.setAttribute("aria-expanded", "false");
+        openBtn.focus();
+      }
+      openBtn.addEventListener("click", function(){
+        fab.classList.contains("fb-fab--open") ? close() : open();
+      });
+      closeBtn.addEventListener("click", close);
+      document.addEventListener("keydown", function(e){
+        if ((e.metaKey || e.ctrlKey) && e.key === "/") { e.preventDefault(); open(); }
+        if (e.key === "Escape" && fab.classList.contains("fb-fab--open")) close();
+      });
+      // ⌘+Enter submits from the textarea
+      ta.addEventListener("keydown", function(e){
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          if (window.htmx) window.htmx.trigger(panel, "submit");
+          else panel.requestSubmit();
+        }
+      });
+      // Re-sync metadata immediately before HTMX sends. `configRequest`
+      // fires after HTMX snapshots form values, so we must also write
+      // directly to request params (not just hidden inputs) to avoid
+      // stale context when theme/URL/title/viewport drift mid-session.
+      panel.addEventListener("htmx:configRequest", function(evt){
+        var context = syncContext();
+        evt.detail.parameters.url = context.url;
+        evt.detail.parameters.page_title = context.pageTitle;
+        evt.detail.parameters.theme = context.theme;
+        evt.detail.parameters.viewport_width = String(context.viewportWidth);
+        // Auto-diagnostics: appended to the body (no schema change) so
+        // the report carries browser context and an error count. The
+        // checkbox lets the user opt out per-report.
+        var diagBox = document.getElementById("fb-diag");
+        if (diagBox && diagBox.checked) {
+          var d = document.documentElement;
+          var a11y = ["reduce-motion","larger-text","high-contrast"].filter(function(k){
+            return d.hasAttribute("data-" + k);
+          });
+          var errs = (window.__benchErrs || []);
+          var lines = [
+            "", "---", "diagnostics (auto-captured):",
+            "ua: " + navigator.userAgent,
+            "viewport: " + window.innerWidth + "x" + window.innerHeight + " @" + (window.devicePixelRatio || 1) + "x",
+            "theme: " + context.theme + (a11y.length ? " · a11y: " + a11y.join(",") : ""),
+          ];
+          if (errs.length) lines.push("recent js error count: " + errs.length);
+          evt.detail.parameters.body = String(evt.detail.parameters.body || ta.value) + lines.join("\n");
+        }
+      });
+      // Image attachments: file picker + paste-a-screenshot into the
+      // textarea. Pasted images accumulate alongside picked ones.
+      var imgInput = document.getElementById("fb-images");
+      var attachList = document.getElementById("fb-attach-list");
+      function syncAttachList(){
+        if (!imgInput || !attachList) return;
+        var names = Array.prototype.map.call(imgInput.files, function(f){ return f.name; });
+        attachList.textContent = names.length ? names.join(", ") : "";
+      }
+      if (imgInput) imgInput.addEventListener("change", syncAttachList);
+      ta.addEventListener("paste", function(e){
+        if (!imgInput || !e.clipboardData) return;
+        var files = Array.prototype.filter.call(e.clipboardData.files || [], function(f){
+          return /^image\//.test(f.type);
+        });
+        if (!files.length) return;
+        e.preventDefault();
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(imgInput.files, function(f){ dt.items.add(f); });
+        files.forEach(function(f, i){
+          dt.items.add(new File([f], f.name || ("pasted-" + (imgInput.files.length + i + 1) + ".png"), {type: f.type}));
+        });
+        imgInput.files = dt.files;
+        syncAttachList();
+      });
+      // Autosave every keystroke
+      ta.addEventListener("input", function(){
+        try {
+          if (ta.value) localStorage.setItem(STORAGE_KEY, ta.value);
+          else localStorage.removeItem(STORAGE_KEY);
+        } catch(_) {}
+      });
+
+      // HTMX response handling — explicit success and failure paths.
+      panel.addEventListener("htmx:afterRequest", function(e){
+        finishRequest();
+        var status = e.detail.xhr && e.detail.xhr.status;
+        var response = String((e.detail.xhr && e.detail.xhr.responseText) || "");
+        // A followed login redirect also returns 200, but did not save feedback.
+        var saved = /^saved as feedback #[0-9]+\b/.test(response);
+        if (e.detail.successful && status >= 200 && status < 300 && saved) {
+          // Server already swapped its <span> into #fb-status. Add a
+          // wrapper class so we render it as a persistent success banner
+          // and surface an "open inbox" link the user can click.
+          statusBox.classList.remove("fb-status--err");
+          statusBox.classList.add("fb-status--ok");
+          if (statusBox.textContent && !statusBox.querySelector("a")) {
+            statusBox.innerHTML = '<span class="fb-status__icon">✓</span> ' + statusBox.innerHTML +
+              ' · <a href="/feedback/inbox" target="_blank" rel="noopener">view inbox ↗</a>';
+          }
+          // Only clear the submitted snapshot; editing while waiting creates
+          // a new draft that must survive the previous request's success.
+          if (ta.value === submittedBody) {
+            ta.value = "";
+            try { localStorage.removeItem(STORAGE_KEY); } catch(_) {}
+          }
+          if (imgInput && imgInput.files.length === submittedFiles.length &&
+              submittedFiles.every(function(file, i){ return imgInput.files[i] === file; })) {
+            imgInput.value = "";
+            syncAttachList();
+          }
+          // Panel stays open; user closes or sends another deliberately.
+        } else {
+          // 4xx / 5xx / network failure. Preserve the textarea, tell the
+          // user what happened, and keep the draft autosaved.
+          statusBox.classList.remove("fb-status--ok");
+          statusBox.classList.add("fb-status--err");
+          var hint = status === 400 && response.length <= 500 && response.indexOf("<") === -1
+            ? response : (status >= 200 && status < 300
+              ? "Save was not confirmed. Sign in if needed, then try again."
+              : (status ? "Server returned " + status + ". Try again." : "Couldn't reach server. Try again."));
+          statusBox.textContent = "Didn't send. " + hint + " Your draft is kept here.";
+        }
+      });
+      // If the HTMX request errors before getting a response (network /
+      // ECONNREFUSED), surface the same error state.
+      panel.addEventListener("htmx:sendError", function(){
+        finishRequest();
+        statusBox.classList.remove("fb-status--ok");
+        statusBox.classList.add("fb-status--err");
+        statusBox.textContent = "Couldn't reach server. Your draft is kept here; try again.";
+      });
+    })();
+  </script>
+  {% if request.state.user_session %}
+  <script>
+    (function(){
+      // Mirror the SERVER-SAVED theme into localStorage so the no-flash
+      // head script paints it on the next load. Driven by the saved
+      // setting via Jinja, NOT by reading the DOM attribute — the head
+      // script may have already painted a stale localStorage theme onto
+      // <html>, and reading it back here created a loop where switching
+      // back to the dark default could never clear the old theme.
+      try {
+        {% if user_theme %}
+        localStorage.setItem("theme", {{ user_theme | tojson }});
+        {% else %}
+        localStorage.removeItem("theme");
+        // Undo the stale theme the head script may have painted this
+        // load. Removing is safe: no attribute IS the dark default.
+        document.documentElement.removeAttribute("data-theme");
+        {% endif %}
+      } catch (e) {}
+    })();
+  </script>
+  {% endif %}
+
+  {# Command palette overlay — WS5 progressive enhancement. The
+     JS in /static/js/palette.js wires Cmd+K / arrow keys / Enter
+     to this markup. Hidden by default; opens on shortcut or via
+     the "jump to ⌘K" button in the nav. If JS doesn't load, the
+     overlay stays hidden and the visible nav still works.
+     ARIA: role="dialog" + aria-modal so screen readers treat it
+     as a modal when opened; the list is role="listbox" with
+     aria-selected on the active item. #}
+  <div class="palette" id="palette" role="dialog" aria-modal="true"
+       aria-label="Command palette" data-admin="{{ 'true' if request.state.is_admin else 'false' }}"
+       data-signed-in="{{ 'true' if request.state.user_session else 'false' }}" hidden>
+    <div class="palette__dialog" role="document">
+      <input type="text" class="palette__input"
+             placeholder="Type a command or destination…"
+             aria-label="Filter commands" role="combobox" aria-autocomplete="list"
+             aria-controls="palette-results" aria-expanded="false"
+             autocomplete="off" spellcheck="false">
+      <ul class="palette__list" id="palette-results" role="listbox" aria-label="Commands"></ul>
+      <p class="palette__empty muted" hidden>No commands match.</p>
+      <footer class="palette__foot muted">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> open</span>
+        <span><kbd>⌘↵</kbd> new tab</span>
+        <span><kbd>Esc</kbd> close</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

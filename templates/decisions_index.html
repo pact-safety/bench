@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Journal — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--journal">
+  <header class="page__head">
+    <h1 class="page__title">Journal</h1>
+    <p class="page__meta">
+      What you decided on each initiative, written from Claude chats via
+      the bench's MCP server. Append-only — entries land via the
+      <code>log_chat_outcome</code> tool, never edited or deleted here.
+      {% if total %}
+        <span class="muted">· {{ total }} {{ 'entry' if total == 1 else 'entries' }}</span>
+      {% endif %}
+    </p>
+  </header>
+
+  {% if facets %}
+    <section class="page__section">
+      <h2 class="section-label">Filter by initiative</h2>
+      <ul class="journal-facets">
+        <li>
+          <a class="journal-facet {% if not selected %}journal-facet--active{% endif %}"
+             href="/decisions">All <span class="muted">({{ total }})</span></a>
+        </li>
+        {% for slug, count in facets %}
+          <li>
+            <a class="journal-facet {% if selected == slug %}journal-facet--active{% endif %}"
+               href="/decisions?initiative={{ slug }}">
+              {{ slug }} <span class="muted">({{ count }})</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if entries %}
+    <section class="page__section">
+      {% if selected %}
+        <h2 class="section-label">
+          {{ entries | length }} {{ 'entry' if entries|length == 1 else 'entries' }} on
+          <code>{{ selected }}</code>
+        </h2>
+      {% endif %}
+      <ol class="journal-entries">
+        {% for entry in entries %}
+          <li class="journal-entry" data-initiative="{{ entry.initiative }}">
+            <header class="journal-entry__head">
+              <a class="journal-entry__permalink"
+                 href="/decisions/{{ entry.id }}"
+                 title="Permalink">
+                <time datetime="{{ entry.created_at.isoformat() }}">
+                  {{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </time>
+              </a>
+              <span class="journal-entry__initiative">
+                <a href="/decisions?initiative={{ entry.initiative }}">
+                  {{ entry.initiative }}
+                </a>
+              </span>
+            </header>
+            {% if entry.decisions %}
+              <div class="journal-entry__decisions">
+                <h3 class="section-label small">Decisions</h3>
+                <p>{{ entry.decisions }}</p>
+              </div>
+            {% endif %}
+            {% if entry.next_actions %}
+              <div class="journal-entry__next">
+                <h3 class="section-label small">Next actions</h3>
+                <p>{{ entry.next_actions }}</p>
+              </div>
+            {% endif %}
+            {% if entry.chat_url %}
+              <p class="journal-entry__chat-link muted small">
+                <a href="{{ entry.chat_url }}" target="_blank" rel="noopener">
+                  Open source chat ↗
+                </a>
+              </p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% else %}
+    <div class="empty-state">
+      {% if selected %}
+        <p class="empty-state__msg">
+          No journal entries logged on <code>{{ selected }}</code> yet.
+          <a href="/decisions">See all initiatives</a>.
+        </p>
+      {% else %}
+        <p class="empty-state__msg">
+          No journal entries yet. In a Claude chat with the bench MCP server
+          connected, ask Claude to log a chat outcome — entries appear here
+          immediately. The MCP tool is <code>log_chat_outcome</code>.
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+</article>
+
+{% endblock %}

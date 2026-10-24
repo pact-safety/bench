@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Request received — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--request-thanks">
+  <header class="page__head">
+    <h1 class="page__title">Thanks — got it.</h1>
+    <p class="page__meta">
+      Your request is in (#{{ request_id }}). Li reviews these every
+      few days. If you're approved, you'll get an email at
+      <code>{{ email }}</code> and can sign in via GitHub right after.
+    </p>
+  </header>
+
+  <section class="page__section">
+    <p>
+      In the meantime: this bench is an alpha. The deepest writeup
+      of what it does lives in the
+      <a class="action-link" href="https://docs.libearden.dev/">docs site</a>.
+    </p>
+    <p>
+      <a class="primary-link" href="/login">Back to sign-in</a>
+    </p>
+  </section>
+</article>
+
+{% endblock %}

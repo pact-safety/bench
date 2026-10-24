@@ -1,0 +1,45 @@
+/* tokens.css — single source of truth for portfolio + bench.
+ *
+ * Mirror of libearden.dev's _sass/_tokens.scss. Variable names MUST
+ * stay identical in both repos so a token change in one place
+ * propagates everywhere the operator's work is presented to the
+ * same reader.
+ *
+ * Imported BEFORE main.css from base.html. main.css aliases the
+ * bench's older variable names (--brand-color, --surface-color,
+ * --border-color, --text-color, etc.) to these tokens, so the
+ * existing 4500-line stylesheet picks up the portfolio palette
+ * without per-rule rewrites.
+ *
+ * IMPORTANT — DO NOT add new variables to this file. Visual additions
+ * specific to the bench (cards, motifs, layout helpers) belong in
+ * main.css. This file is the shared vocabulary; main.css is the
+ * bench's accent on top.
+ */
+
+:root {
+    /* surface scale — near-black, neutral */
+    --bg:        #0A0B0D;
+    --surface:   #131519;
+    --surface-2: #1A1D23;
+    --border:    #262A31;
+
+    /* text */
+    --text:       #E7E9EC;
+    --text-muted: #8A909B;
+    --text-faint: #5A606B;
+
+    /* accent — amber (locked) */
+    --accent:       #E8B339;
+    --accent-hover: #F2C65C;   /* lighter, for hover/active */
+    --accent-dim:   #E8B33926; /* ~15% alpha — faint fills, underlines, borders */
+
+    /* type */
+    --font-sans: "Inter", system-ui, sans-serif;
+    --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+    /* geometry */
+    --radius:    6px;
+    --maxw:      720px;   /* prose / single-column sections */
+    --maxw-wide: 1080px;  /* card / grid sections (matches container) */
+}

@@ -1,0 +1,88 @@
+{# Stat pentagon — radar over the 5 consolidated stats.
+   Visual hierarchy:
+     1. Concentric grid rings (low-key, for scale)
+     2. Outline pentagon (definition only, no fill)
+     3. Value polygon (the message — bright, soft glow)
+     4. Stem lines connecting each badge to its data vertex
+     5. Stat badges, tier-colored
+#}
+{% set geom = skill_scores | pentagon_geometry %}
+<div class="stat-pentagon stat-pentagon--animate-in" data-aim-chart role="img" aria-label="Skill stats pentagon. {% for p in geom.points %}{{ p.label }}: {% if p.measured %}{{ p.pct }} percent{% else %}Not assessed{% endif %}. {% endfor %}">
+  <svg viewBox="0 0 {{ geom.view_w }} {{ geom.view_h }}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="value-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="2.5" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+
+    {# Grid rings — get progressively brighter toward 100% #}
+    {% for fraction, poly in geom.grid_polygons %}
+      <polygon class="stat-pentagon__grid" points="{{ poly }}" style="opacity: {{ (0.20 + fraction * 0.25) | round(2) }};" />
+    {% endfor %}
+
+    {# Outline pentagon — definition only, no fill #}
+    <polygon class="stat-pentagon__outline" points="{{ geom.outline_polygon }}" />
+
+    {# Spokes #}
+    {% for x1, y1, x2, y2 in geom.axis_lines %}
+      <line class="stat-pentagon__spoke" x1="{{ x1 }}" y1="{{ y1 }}" x2="{{ "%.1f"|format(x2) }}" y2="{{ "%.1f"|format(y2) }}" />
+    {% endfor %}
+
+    {# Numeric ticks on the top spoke #}
+    {% for x, y, text in geom.tick_labels %}
+      <text class="stat-pentagon__tick" x="{{ "%.1f"|format(x) }}" y="{{ "%.1f"|format(y) }}">{{ text }}</text>
+    {% endfor %}
+
+    {# Value polygon — the message #}
+    {% if geom.value_polygon %}
+      <polygon class="stat-pentagon__value" points="{{ geom.value_polygon }}" filter="url(#value-glow)" />
+    {% endif %}
+
+    {# Value edges are rendered separately so hover can brighten one segment. #}
+    {% for p in geom.points %}
+      {% set nxt = geom.points[(loop.index0 + 1) % (geom.points | length)] %}
+      {% if p.measured and nxt.measured %}
+      <line class="stat-pentagon__value-edge"
+            data-axis="{{ p.key }}"
+            x1="{{ "%.1f"|format(p.value_x) }}" y1="{{ "%.1f"|format(p.value_y) }}"
+            x2="{{ "%.1f"|format(nxt.value_x) }}" y2="{{ "%.1f"|format(nxt.value_y) }}" />
+      {% endif %}
+    {% endfor %}
+
+    {# Stem lines: badge -> data vertex #}
+    {% for p in geom.points if p.measured %}
+      <line class="stat-pentagon__stem stat-pentagon__stem--{{ p.tier }}"
+            x1="{{ "%.1f"|format(p.stem_x) }}" y1="{{ "%.1f"|format(p.stem_y) }}"
+            x2="{{ "%.1f"|format(p.value_x) }}" y2="{{ "%.1f"|format(p.value_y) }}" />
+    {% endfor %}
+
+    {# Value dots — ring of background-color around each so they read on top of grid #}
+    {% for p in geom.points if p.measured %}
+      <circle class="stat-pentagon__dot stat-pentagon__dot--{{ p.tier }}"
+              data-axis="{{ p.key }}"
+              cx="{{ "%.1f"|format(p.value_x) }}" cy="{{ "%.1f"|format(p.value_y) }}" r="4.5" />
+    {% endfor %}
+
+    {# Center dot #}
+    <circle class="stat-pentagon__center" cx="{{ geom.center_x }}" cy="{{ geom.center_y }}" r="2.5" />
+
+    {# Stat badges #}
+    {% for p in geom.points %}
+      <g class="stat-badge stat-badge--{{ p.tier }}" data-axis="{{ p.key }}" transform="translate({{ "%.1f"|format(p.badge_x) }} {{ "%.1f"|format(p.badge_y) }})">
+        <circle class="stat-badge__bg" r="42" />
+        <circle class="stat-badge__ring" r="42" />
+        <text class="stat-badge__label" text-anchor="middle" y="-7">{{ p.label }}</text>
+        {% if p.measured %}
+          <text class="stat-badge__pct" text-anchor="middle" y="13">{{ p.pct }}<tspan class="stat-badge__pct-unit">%</tspan></text>
+        {% else %}
+          <title>{{ p.label }}: Not assessed</title>
+          <text class="stat-badge__pct-unit" text-anchor="middle" y="13">Not assessed</text>
+        {% endif %}
+      </g>
+    {% endfor %}
+  </svg>
+</div>

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ track.title }} — Tracks — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--track-detail learning-page">
+  <header class="page__head">
+    <p class="page__meta"><a href="/tracks">← Back to tracks</a></p>
+    <h1 class="page__title">{{ track.title }}</h1>
+    {% if track.description %}<p class="page__meta">{{ track.description }}</p>{% endif %}
+    <div class="page__meta">
+      {% if not is_available %}
+        <span class="badge">pending audit</span>
+      {% elif is_active %}
+        <span class="badge badge--em">active</span>
+      {% elif is_paused %}
+        <span class="badge">paused</span>
+      {% else %}
+        <span class="badge">not started</span>
+      {% endif %}
+      <span class="badge badge--time">{{ completed_count }} practice checks · {{ exempt_count | default(0) }} tested out · {{ total_sections }} core sections</span>
+      {% if optional_total %}<span class="badge">{{ optional_completed }} optional practice checks · {{ optional_exempt_count | default(0) }} tested out · {{ optional_total }} optional sections</span>{% endif %}
+      {% if gate_blocked_title %}
+        <p class="muted" role="alert">
+          Checkpoint blocked — <strong>{{ gate_blocked_title }}</strong> has not passed its tests yet.
+        </p>
+      {% endif %}
+      {% if total_sections %}
+        {% if satisfied_count | default(completed_count) >= total_sections %}
+          <span class="muted">all {% if optional_total %}core {% endif %}sections satisfied</span>
+        {% elif next_section_number %}
+          <span class="muted">next selected section {{ next_section_number }}</span>
+        {% else %}
+          <span class="muted">waiting on prerequisites</span>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% if is_active and is_available and current_row and current_row.is_unlocked %}<p><a href="#track-next">Go to your next step ↓</a></p>{% endif %}
+  </header>
+
+  {% if is_available and track.body_md %}
+    <section class="page__section">
+      <h2 class="section-label">Notes</h2>
+      <div class="md">{{ track.body_md | markdown }}</div>
+      {% if track.source_url %}<p><a href="{{ track.source_url }}" target="_blank" rel="noopener">Source curriculum ↗</a></p>{% endif %}
+    </section>
+  {% endif %}
+
+  <section class="page__section">
+    {% if not is_available %}
+      <h2 class="section-label">Notes</h2>
+      <p role="status">Pending content audit. Your saved work is preserved. This track cannot be activated yet.</p>
+      <form method="post" action="/tracks/{{ track.slug }}/request"><button type="submit" class="bordered-button">Request this track</button></form>
+    {% elif is_active %}
+      <form method="post" action="/tracks/clear-active">
+        <button type="submit" class="muted-button">Pause track</button>
+      </form>
+    {% else %}
+      <form method="post" action="/tracks/{{ track.slug }}/activate">
+        <button type="submit" class="btn btn--primary">{% if is_paused %}Resume track{% else %}Activate track{% endif %}</button>
+      </form>
+    {% endif %}
+  </section>
+
+  {% if is_active and is_available and current_row and current_row.is_unlocked %}
+  <section id="track-next" class="next-action page__section" aria-labelledby="track-next-title">
+    <p class="next-action__label">Your next step</p>
+    <h2 id="track-next-title" class="next-action__title">{{ current_row.section.title }}</h2>
+    <p>{{ current_row.session.get('next_action') or 'Start with a 30-minute block. Read the guidance, work with the source, then explain what you learned.' }}</p>
+    {% if current_row.session.get('stopping_point') %}<p>Last stopping point: {{ current_row.session.stopping_point }}</p>{% endif %}
+    <a class="btn btn--primary" href="{{ current_row.content_url }}">{% if current_row.session %}Continue{% else %}Begin{% endif %} this section</a>
+  </section>
+  {% endif %}
+
+  {% if is_available and optional_total %}
+  <section class="page__section">
+    <h2 class="section-label">Choose your preparation</h2>
+    <p>Core prework and optional refreshers have separate progress. If an essential math or Python topic is unfamiliar, choose that refresher before continuing the implementation exercises.</p>
+    <p><a href="#section-{{ first_optional_index }}">Browse math, Python, and supplemental prework →</a> · <a href="/">Back to Today →</a></p>
+  </section>
+  {% endif %}
+  {% for chapter in chapter_rows %}
+    <section class="page__section">
+      <h2 class="section-label">{{ chapter.title }}</h2>
+      <ul class="learning-outline">
+        {% for row in chapter.sections %}
+          <li id="section-{{ row.idx }}" class="learning-section">
+            <h3>{% if is_available and row.is_unlocked %}<a href="{{ row.content_url }}">{{ row.section.title }}</a>{% else %}{{ row.section.title }}{% endif %}</h3>
+            <p>
+              <span class="badge">{{ row.section.kind | replace('external_', '') }}</span>
+              <span class="badge">{% if not is_available %}Pending audit{% elif row.exemption %}Tested out{% elif row.is_completed %}Done{% elif not row.is_unlocked %}Locked{% elif row.is_current %}Next{% elif row.section.optional %}Optional refresher{% else %}Available{% endif %}</span>
+              {% if row.section.duration_min %}<span class="muted">{{ row.section.duration_min }} min</span>{% endif %}
+            </p>
+            {% if is_available and row.is_future %}
+              <p class="muted">Complete the prerequisites first:</p>
+              <ul>{% for idx, title in row.missing_prerequisites %}<li><a href="/tracks/{{ track.slug }}/sections/{{ idx }}">{{ title }}</a></li>{% endfor %}</ul>
+            {% endif %}
+            {% if is_available and row.is_unlocked and row.resources %}
+              <details>
+                <summary>Supplemental resources</summary>
+                <ul>{% for resource in row.resources %}<li><a href="{{ resource.url }}">{{ resource.title }}</a> <span class="badge">{{ resource.kind }}</span></li>{% endfor %}</ul>
+              </details>
+            {% endif %}
+            <p><a href="/tracks/{{ track.slug }}/sections/{{ row.idx }}">{% if not is_available %}View saved work{% else %}Practice check and saved work{% endif %}</a>{% if is_available and row.exam_url %} · <a href="{{ row.exam_url }}">Section assessment</a>{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endfor %}
+</article>
+{% endblock %}

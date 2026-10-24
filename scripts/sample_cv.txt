@@ -1,0 +1,38 @@
+Elliot "Li" Bearden
+Applied AI Engineer · 5 years production ML at Deepgram
+
+EXPERIENCE
+
+Deepgram — Applied AI Engineer (2019-2024)
+- Designed evaluation framework for a $1.3B voice AI platform.
+- Built data pipelines (Prefect, MLflow) ingesting 10M+ audio
+  segments per day. Sharding and preprocessing for downstream
+  fine-tuning of transformer-based speech models.
+- Owned the inference stack: KV cache improvements, batch decoding,
+  beam search and temperature-controlled sampling for ASR + TTS.
+- Established the model regression test suite — paired comparisons
+  on customer-domain audio, calibration metrics, robustness probes.
+- Led incident response for production model degradations; debugged
+  silent eval drift, layer normalization mismatches, mixed-precision
+  overflow.
+
+Independent AI Consultant (2024-present)
+- LLM evaluation methodology, sycophancy detection, eval validity.
+- Capstone (in progress): paired-comparison eval framework for
+  sycophancy in production chat models.
+
+EDUCATION
+
+MSCS, Grand Canyon University (in progress)
+- Capstone on LLM sycophancy eval methodology.
+- Coursework: machine learning, distributed systems, algorithms.
+
+CERTIFICATIONS / OTHER
+
+- 6 years writing Python.
+- Reading-fluency in Rust; current project: a tokenizer in Rust.
+
+INTERESTS
+
+- AI safety, eval design, interpretability primitives.
+- Targeting research engineering at frontier labs and safety orgs.

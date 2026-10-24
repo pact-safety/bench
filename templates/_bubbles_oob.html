@@ -1,0 +1,15 @@
+{# Move the next strip to its anchor and refresh its detached form owners
+   in the same reply, so subsequent actions target the newly displayed tip. #}
+{% import "_bubbles.html" as b with context %}
+
+<div id="ob-slot-{{ surface }}-{{ dismissed_anchor }}"
+     class="ob-bubble-slot" aria-live="polite"
+     hx-swap-oob="outerHTML"></div>
+
+{% if bubbles.current %}
+<div id="ob-slot-{{ surface }}-{{ bubbles.current.anchor }}"
+     class="ob-bubble-slot" aria-live="polite" data-advanced
+     hx-swap-oob="outerHTML">{{ b.strip(bubbles.current) }}</div>
+{% endif %}
+
+{{ b.dismissal_forms(oob=true) }}

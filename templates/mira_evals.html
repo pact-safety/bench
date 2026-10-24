@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block main_class %}container--narrow{% endblock %}
+{% block title %}Mira — proposed evals{% endblock %}
+{% block body %}
+
+<article class="page page--mira">
+  <div class="mira-surface">
+    <div class="mira-surface__head">
+      <span class="mira-surface__crumb">Connect › Mira › Evals</span>
+      {% set mira_tab = 'evals' %}
+      {% include "_mira_tabs.html" %}
+    </div>
+
+    <div class="mira-surface__body">
+      <div class="mira-surface__title-row">
+        <h1 class="mira-surface__title">Proposed evals</h1>
+      </div>
+      <p class="mira-surface__sub">
+        Eval designs Mira drafts when a conversation converges on a testable
+        hypothesis. Mira-authored — read-only here.
+      </p>
+
+      {% if evals %}
+        <ul class="mira-evals">
+          {% for ev in evals %}
+            <li class="mira-eval">
+              <div class="mira-eval__prov">
+                <span class="mira-chip mira-chip--mira">✦ MIRA</span>
+                <span class="muted">proposed</span>
+              </div>
+              <h3 class="mira-eval__title">
+                {{ ev.meta.title if ev.meta and ev.meta.title else ev.hypothesis }}
+              </h3>
+              <p class="mira-eval__line">
+                <strong>Hypothesis:</strong> {{ ev.hypothesis }}
+              </p>
+              {% if ev.falsifier %}
+                <p class="mira-eval__line">
+                  <strong>Falsifier:</strong> {{ ev.falsifier }}
+                </p>
+              {% endif %}
+              {% if ev.conditions %}
+                <table class="mira-eval__conditions">
+                  <thead>
+                    <tr><th scope="col">Condition</th><th scope="col">Framing</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for c in ev.conditions %}
+                      <tr>
+                        <td>{{ c.label }}</td>
+                        <td>{{ c.framing }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% endif %}
+              {% if ev.meta and ev.meta.inspect_path %}
+                {# Informational, not a live action: exporting to Inspect is a
+                   later phase, so the path is shown, not wired to a button. #}
+                <p class="mira-eval__inspect muted">
+                  Draft target: <code>{{ ev.meta.inspect_path }}</code>
+                </p>
+              {% endif %}
+              <div class="mira-card__meta">{{ ev.created_at.strftime('%b %d, %Y') }}</div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mira-surface__sub">
+          No proposed evals yet — when a conversation lands on a testable
+          hypothesis, Mira drafts the eval here.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</article>
+
+{% endblock %}

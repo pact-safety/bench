@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today + Linear v2 · prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="./_prototype.css">
+</head>
+<body data-variants="D,E,F" data-surface="today + linear v2 · 8:30am">
+<div class="proto-banner">prototype · today + linear v2 · <a href="https://github.com/LiBearden/research-engineer-interview-prep/blob/main/prototypes/2026-linear-today-v2/README.md">README</a></div>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/">Li's Bench</a>
+    <nav class="header-nav nav--hybrid" aria-label="Primary">
+      <a class="header-nav__link is-active" href="#">Today</a>
+      <div class="nav__group"><button class="nav__group-trigger" type="button">Prep</button></div>
+      <div class="nav__group"><button class="nav__group-trigger" type="button">Ingest</button></div>
+      <div class="nav__group"><button class="nav__group-trigger" type="button">Produce</button></div>
+      <div class="nav__group"><button class="nav__group-trigger" type="button">Assess</button></div>
+      <a class="header-nav__link" href="#">Connect</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT D — Top segmented pill · Vertical timeline · Bar    ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--D" data-mode="rail">
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#">←</a>
+        <span class="today__date">2026-05-28 · Thu · <strong style="color: var(--accent);">8:30 AM</strong></span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>Anthropic research-engineer prep</strong></p>
+    </header>
+
+    <div class="view-toggle--segmented" role="tablist" aria-label="Today view">
+      <button type="button" role="tab" data-view-toggle="rail" class="is-active" aria-pressed="true">Rail</button>
+      <button type="button" role="tab" data-view-toggle="timeline" aria-pressed="false">Timeline</button>
+    </div>
+
+    <!-- ─── Rail view ──────────────────────────────────────────── -->
+    <div class="view-rail">
+      <div class="home-layout">
+        <div class="home-layout__primary">
+          <article style="padding: var(--space-5) var(--space-6); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); margin-bottom: var(--space-5);">
+            <p style="font-family: var(--font-mono); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted); margin: 0 0 var(--space-2);">Now</p>
+            <h2 style="margin: 0 0 var(--space-3); font-size: var(--text-xl); font-weight: 600;">BEN-91 · Wire MIRA Phase 0 RAG scaffold</h2>
+            <p class="muted">Focus phase · ~2h estimated · You're 30 minutes in.</p>
+            <p style="margin-top: var(--space-4);"><a href="#" class="action-link">Open in Linear ↗</a></p>
+          </article>
+
+          <section style="margin-bottom: var(--space-6);">
+            <h2 class="section-label">Today's bench picks (post-block)</h2>
+            <ul class="library-list">
+              <li class="library-row"><a class="library-row__main" href="#"><span class="library-row__title">Reflect on this morning's session</span><div class="library-row__meta"><span class="badge">writing</span><span class="badge badge--time">15 min</span></div></a></li>
+              <li class="library-row"><a class="library-row__main" href="#"><span class="library-row__title">Two-sum variants — interview mode</span><div class="library-row__meta"><span class="badge">problem</span><span class="badge badge--time">15 min</span></div></a></li>
+            </ul>
+          </section>
+        </div>
+
+        <aside class="home-layout__rail">
+          <section class="home-rail__card">
+            <h2 class="home-rail__heading">Linear · due today + overdue</h2>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">DEEP-12</span><span class="linear-card__due">overdue 2d</span></div>
+              <div class="linear-card__title">Send draft letter to counsel</div>
+              <div class="linear-card__meta"><span class="linear-card__project">Deepgram Legal</span></div>
+            </a>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-91</span><span class="linear-card__due">overdue 1d · ▸ in progress</span></div>
+              <div class="linear-card__title">Wire MIRA Phase 0 RAG scaffold</div>
+              <div class="linear-card__meta"><span class="linear-card__project">Personal Context</span></div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">CONSULT-7</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Landing page copy v2</div>
+              <div class="linear-card__meta"><span class="linear-card__project">Consulting Launch</span></div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-92</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Triage Charlie PR backlog</div>
+              <div class="linear-card__meta"><span class="linear-card__project">Personal Context</span></div>
+            </a>
+            <p style="margin: var(--space-3) 0 0; font-size: var(--text-sm);"><a href="#" class="muted">see all in Linear →</a></p>
+          </section>
+
+          <section class="home-rail__card">
+            <h2 class="home-rail__heading">7-day signal</h2>
+            <div class="home-rail__stats">
+              <div class="home-rail__stat"><span class="home-rail__stat-value">12</span><span class="home-rail__stat-label">attempts</span></div>
+              <div class="home-rail__stat"><span class="home-rail__stat-value">6</span><span class="home-rail__stat-label">content done</span></div>
+              <div class="home-rail__stat"><span class="home-rail__stat-value">✓</span><span class="home-rail__stat-label">today</span></div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ─── Timeline view ──────────────────────────────────────── -->
+    <div class="view-timeline">
+      <!-- Day progress bar -->
+      <div class="day-progress-bar">
+        <div class="day-progress-bar__head">
+          <span><strong>2 of 6</strong> tasks done · MIRA-planned</span>
+          <span><strong>2h 30m</strong> remaining in block</span>
+        </div>
+        <div class="day-progress-bar__track">
+          <div class="day-progress-bar__fill" style="width: 50%;"></div>
+          <!-- Now at 8:30am = 50% of the 6a-11a span -->
+          <div class="day-progress-bar__now" style="left: 50%;"></div>
+        </div>
+        <div class="day-progress-bar__ticks">
+          <span>6a</span><span>7a</span><span>8a</span><span>9a</span><span>10a</span><span>11a</span>
+        </div>
+      </div>
+
+      <section class="vtimeline">
+        <header class="vtimeline__head">
+          <span class="vtimeline__eyebrow">deep work block · 6a–11a</span>
+          <h2 class="vtimeline__title">Today's plan</h2>
+          <p class="estimate-hint"><span class="estimate-hint__icon">★</span>MIRA · estimates from your last 4 similar tasks (avg 1h 50m for RAG scaffolds)</p>
+        </header>
+        <ol class="vtimeline__list">
+          <li class="vtimeline__item vtimeline__item--done vtimeline__item--overdue">
+            <span class="vtimeline__time">6:00 → 6:30</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Send draft letter to counsel</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--warmup">warm-up</span>
+                <span>DEEP-12 · Deepgram Legal · 30m</span>
+                <a href="#" class="muted">open ↗</a>
+              </span>
+            </div>
+          </li>
+          <li class="vtimeline__item vtimeline__item--done vtimeline__item--bench">
+            <span class="vtimeline__time">6:30 → 7:00</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Sutton ch. 9 · function approximation</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--warmup">warm-up</span>
+                <span>bench · reading · 25m</span>
+              </span>
+            </div>
+          </li>
+          <li class="vtimeline__item vtimeline__item--current vtimeline__item--overdue">
+            <span class="vtimeline__time">7:00 → 9:00</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Wire MIRA Phase 0 RAG scaffold</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--focus">focus</span>
+                <span>BEN-91 · Personal Context · 2h</span>
+                <a href="#" class="muted">open ↗</a>
+              </span>
+            </div>
+          </li>
+          <li class="vtimeline__item vtimeline__item--bench">
+            <span class="vtimeline__time">9:00 → 9:45</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Two-sum variants — interview mode</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--exercise">exercise</span>
+                <span>bench · problem · 45m</span>
+              </span>
+            </div>
+          </li>
+          <li class="vtimeline__item">
+            <span class="vtimeline__time">9:45 → 10:30</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Triage Charlie PR backlog</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--winddown">wind-down</span>
+                <span>BEN-92 · Personal Context · 45m</span>
+                <a href="#" class="muted">open ↗</a>
+              </span>
+            </div>
+          </li>
+          <li class="vtimeline__item">
+            <span class="vtimeline__time">10:30 → 11:00</span>
+            <span class="vtimeline__dot"></span>
+            <div class="vtimeline__main">
+              <a class="vtimeline__title-text" href="#">Landing page copy v2</a>
+              <span class="vtimeline__meta">
+                <span class="vtimeline__phase vtimeline__phase--winddown">wind-down</span>
+                <span>CONSULT-7 · Consulting Launch · 30m</span>
+                <a href="#" class="muted">open ↗</a>
+              </span>
+            </div>
+          </li>
+        </ol>
+
+        <footer class="block-actions-foot">
+          <span>4h 30m planned · 30m slack</span>
+          <a href="#">extend block to 12p →</a>
+          <a href="#">defer CONSULT-7 to Friday →</a>
+          <a href="#">re-plan with MIRA →</a>
+        </footer>
+      </section>
+    </div>
+  </main>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT E — Mini-thumb in rail · Horizontal timeline · Ring  ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--E" data-mode="rail">
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#">←</a>
+        <span class="today__date">2026-05-28 · Thu · <strong style="color: var(--accent);">8:30 AM</strong></span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>Anthropic research-engineer prep</strong></p>
+    </header>
+
+    <!-- Rail view -->
+    <div class="view-rail">
+      <div class="home-layout">
+        <div class="home-layout__primary">
+          <article style="padding: var(--space-5) var(--space-6); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); margin-bottom: var(--space-5);">
+            <p style="font-family: var(--font-mono); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted); margin: 0 0 var(--space-2);">Now · focus phase</p>
+            <h2 style="margin: 0 0 var(--space-3); font-size: var(--text-xl); font-weight: 600;">BEN-91 · Wire MIRA Phase 0 RAG scaffold</h2>
+            <p class="muted">~2h estimated · You're 30 minutes in.</p>
+            <p style="margin-top: var(--space-4);"><a href="#" class="action-link">Open in Linear ↗</a></p>
+          </article>
+
+          <section style="margin-bottom: var(--space-6);">
+            <h2 class="section-label">After the block</h2>
+            <ul class="library-list">
+              <li class="library-row"><a class="library-row__main" href="#"><span class="library-row__title">Reflect on this morning's session</span><div class="library-row__meta"><span class="badge">writing</span><span class="badge badge--time">15 min</span></div></a></li>
+              <li class="library-row"><a class="library-row__main" href="#"><span class="library-row__title">Two-sum variants — interview mode</span><div class="library-row__meta"><span class="badge">problem</span><span class="badge badge--time">15 min</span></div></a></li>
+            </ul>
+          </section>
+        </div>
+
+        <aside class="home-layout__rail">
+          <!-- Day-progress ring at the top of the rail -->
+          <div class="day-progress-ring">
+            <svg class="day-progress-ring__svg" viewBox="0 0 48 48">
+              <circle class="day-progress-ring__track" cx="24" cy="24" r="20"/>
+              <!-- circumference = 2πr ≈ 125.66; 50% = 62.83 dash, rest gap -->
+              <circle class="day-progress-ring__fill" cx="24" cy="24" r="20" stroke-dasharray="62.83 125.66"/>
+            </svg>
+            <div class="day-progress-ring__center">
+              <span class="day-progress-ring__pct">50%</span>
+              <span class="day-progress-ring__sub">2 of 6 · 2h 30m left</span>
+            </div>
+          </div>
+
+          <!-- Day-at-a-glance thumbnail toggle -->
+          <button type="button" class="view-toggle--thumb" data-view-toggle="timeline">
+            <span class="view-toggle__label">day at a glance — click to expand</span>
+            <div class="view-toggle__strip">
+              <!-- 4 mini-task chunks across the strip -->
+              <div class="view-toggle__thumb-task view-toggle__thumb-task--overdue" style="grid-column: 1; grid-row: 1; height: 24px;"></div>
+              <div class="view-toggle__thumb-task" style="grid-column: 2; grid-row: 1; height: 24px; background: var(--info);"></div>
+              <div class="view-toggle__thumb-task view-toggle__thumb-task--overdue" style="grid-column: 3 / span 4; grid-row: 1; height: 24px;"></div>
+              <div class="view-toggle__thumb-task" style="grid-column: 7 / span 2; grid-row: 1; height: 24px; background: var(--ok);"></div>
+              <div class="view-toggle__thumb-task" style="grid-column: 9; grid-row: 1; height: 24px;"></div>
+              <div class="view-toggle__thumb-task" style="grid-column: 10; grid-row: 1; height: 24px; opacity: 0.4;"></div>
+            </div>
+            <span class="view-toggle__cta">expand timeline →</span>
+          </button>
+
+          <section class="home-rail__card" style="margin-top: var(--space-4);">
+            <h2 class="home-rail__heading">Linear · due today + overdue</h2>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">DEEP-12</span><span class="linear-card__due">✓ done</span></div>
+              <div class="linear-card__title">Send draft letter to counsel</div>
+            </a>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-91</span><span class="linear-card__due">▸ in progress</span></div>
+              <div class="linear-card__title">Wire MIRA Phase 0 RAG scaffold</div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">CONSULT-7</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Landing page copy v2</div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-92</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Triage Charlie PR backlog</div>
+            </a>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Timeline view -->
+    <div class="view-timeline">
+      <button type="button" data-view-toggle="rail" style="margin-bottom: var(--space-4); appearance: none; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2) var(--space-4); color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); cursor: pointer;">
+        ← back to rail view
+      </button>
+
+      <div style="display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4);">
+        <div class="day-progress-ring">
+          <svg class="day-progress-ring__svg" viewBox="0 0 48 48">
+            <circle class="day-progress-ring__track" cx="24" cy="24" r="20"/>
+            <circle class="day-progress-ring__fill" cx="24" cy="24" r="20" stroke-dasharray="62.83 125.66"/>
+          </svg>
+          <div class="day-progress-ring__center">
+            <span class="day-progress-ring__pct">50%</span>
+            <span class="day-progress-ring__sub">2 of 6 · 2h 30m left</span>
+          </div>
+        </div>
+        <p class="estimate-hint"><span class="estimate-hint__icon">★</span>MIRA · estimates from your last 4 similar tasks (avg 1h 50m for RAG scaffolds)</p>
+      </div>
+
+      <section class="htimeline">
+        <header class="htimeline__head">
+          <span class="vtimeline__eyebrow">deep work block · 6a–11a</span>
+          <h2 class="vtimeline__title">Today's plan</h2>
+        </header>
+
+        <div class="htimeline__phases">
+          <!-- Phase bands across the top -->
+          <div class="htimeline__phase-band htimeline__phase-band--warmup"   style="left: 1%;  width: 18%;">warm-up · 6:00–7:00</div>
+          <div class="htimeline__phase-band htimeline__phase-band--focus"    style="left: 20%; width: 38%;">focus · 7:00–9:00</div>
+          <div class="htimeline__phase-band htimeline__phase-band--exercise" style="left: 59%; width: 14%;">exercise · 9:00–9:45</div>
+          <div class="htimeline__phase-band htimeline__phase-band--winddown" style="left: 74%; width: 25%;">wind-down · 9:45–11:00</div>
+
+          <!-- Now marker at 8:30 = 50% of 6-11 -->
+          <div class="htimeline__now" style="left: 50%;"></div>
+
+          <!-- Tasks positioned by start time -->
+          <a class="htimeline__task htimeline__task--overdue htimeline__task--done" href="#" style="left: 1%; width: 9%;">
+            <span class="htimeline__task-id">DEEP-12</span>
+            <span class="htimeline__task-title">Counsel letter</span>
+          </a>
+          <a class="htimeline__task htimeline__task--bench htimeline__task--done" href="#" style="left: 10%; width: 9%;">
+            <span class="htimeline__task-id">bench · reading</span>
+            <span class="htimeline__task-title">Sutton ch. 9</span>
+          </a>
+          <a class="htimeline__task htimeline__task--overdue htimeline__task--current" href="#" style="left: 20%; width: 38%;">
+            <span class="htimeline__task-id">BEN-91 · ▸ in progress</span>
+            <span class="htimeline__task-title">MIRA Phase 0 RAG scaffold</span>
+          </a>
+          <a class="htimeline__task htimeline__task--bench" href="#" style="left: 59%; width: 14%;">
+            <span class="htimeline__task-id">bench · problem</span>
+            <span class="htimeline__task-title">Two-sum variants</span>
+          </a>
+          <a class="htimeline__task htimeline__task--today" href="#" style="left: 74%; width: 14%;">
+            <span class="htimeline__task-id">BEN-92</span>
+            <span class="htimeline__task-title">Triage Charlie PRs</span>
+          </a>
+          <a class="htimeline__task htimeline__task--today" href="#" style="left: 89%; width: 10%;">
+            <span class="htimeline__task-id">CONSULT-7</span>
+            <span class="htimeline__task-title">Landing copy v2</span>
+          </a>
+        </div>
+
+        <div class="htimeline__ticks">
+          <span>6a</span><span>7a</span><span>8a</span><span>9a</span><span>10a</span><span>11a</span>
+        </div>
+
+        <footer class="block-actions-foot">
+          <span>4h 30m planned · 30m slack</span>
+          <a href="#">extend block to 12p →</a>
+          <a href="#">defer CONSULT-7 to Friday →</a>
+          <a href="#">re-plan with MIRA →</a>
+        </footer>
+      </section>
+    </div>
+  </main>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  VARIANT F — Inline date pill · Phase rows · Inline progress  ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<section class="variant variant--F" data-mode="rail">
+  <main class="container">
+    <header class="today__head">
+      <nav class="today__nav" aria-label="day navigation">
+        <a class="today__nav-arrow" href="#">←</a>
+        <span class="today__date">2026-05-28 · Thu · <strong style="color: var(--accent);">8:30 AM</strong></span>
+        <button type="button" class="view-toggle--inline" data-view-toggle="rail" aria-pressed="true">
+          <span aria-hidden="true">▣</span> rail
+        </button>
+        <button type="button" class="view-toggle--inline" data-view-toggle="timeline" aria-pressed="false">
+          <span aria-hidden="true">▤</span> timeline
+        </button>
+        <span class="day-progress-inline">
+          <span><strong>2 of 6</strong> done</span>
+          <span>2h 30m left in block</span>
+        </span>
+        <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true">→</span>
+      </nav>
+      <h1 class="today__title">Good morning, Li</h1>
+      <p class="today__hint">Focused on <strong>Anthropic research-engineer prep</strong></p>
+    </header>
+
+    <!-- Rail view -->
+    <div class="view-rail">
+      <div class="home-layout">
+        <div class="home-layout__primary">
+          <article style="padding: var(--space-5) var(--space-6); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); margin-bottom: var(--space-5);">
+            <p style="font-family: var(--font-mono); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted); margin: 0 0 var(--space-2);">Now · focus phase</p>
+            <h2 style="margin: 0 0 var(--space-3); font-size: var(--text-xl); font-weight: 600;">BEN-91 · Wire MIRA Phase 0 RAG scaffold</h2>
+            <p class="muted">~2h estimated · You're 30 minutes in.</p>
+          </article>
+
+          <section style="margin-bottom: var(--space-6);">
+            <h2 class="section-label">After the block</h2>
+            <ul class="library-list">
+              <li class="library-row"><a class="library-row__main" href="#"><span class="library-row__title">Reflect on this morning's session</span><div class="library-row__meta"><span class="badge">writing</span><span class="badge badge--time">15 min</span></div></a></li>
+            </ul>
+          </section>
+        </div>
+
+        <aside class="home-layout__rail">
+          <section class="home-rail__card">
+            <h2 class="home-rail__heading">Linear · due today + overdue</h2>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">DEEP-12</span><span class="linear-card__due">✓ done</span></div>
+              <div class="linear-card__title">Send draft letter to counsel</div>
+            </a>
+            <a class="linear-card linear-card--overdue" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-91</span><span class="linear-card__due">▸ in progress</span></div>
+              <div class="linear-card__title">Wire MIRA Phase 0 RAG scaffold</div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">CONSULT-7</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Landing page copy v2</div>
+            </a>
+            <a class="linear-card linear-card--today" href="#">
+              <div class="linear-card__head"><span class="linear-card__id">BEN-92</span><span class="linear-card__due">today</span></div>
+              <div class="linear-card__title">Triage Charlie PR backlog</div>
+            </a>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Timeline view -->
+    <div class="view-timeline">
+      <p class="estimate-hint" style="margin-bottom: var(--space-3);"><span class="estimate-hint__icon">★</span>MIRA · estimates from your last 4 similar tasks (avg 1h 50m for RAG scaffolds)</p>
+
+      <section class="phase-timeline">
+        <header class="vtimeline__head">
+          <span class="vtimeline__eyebrow">deep work block · 6a–11a · phase rows</span>
+          <h2 class="vtimeline__title">Today's plan</h2>
+        </header>
+
+        <div class="phase-row phase-row--warmup">
+          <div class="phase-row__label">
+            <span class="name">warm-up</span>
+            <span class="span">6:00 → 7:00</span>
+          </div>
+          <div class="phase-row__tasks">
+            <a class="phase-task phase-task--done" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">DEEP-12 · Deepgram Legal</span>
+                <span class="phase-task__title">Send draft letter to counsel</span>
+              </div>
+              <span class="phase-task__time">30m</span>
+            </a>
+            <a class="phase-task phase-task--done" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">bench · reading</span>
+                <span class="phase-task__title">Sutton ch. 9 · function approximation</span>
+              </div>
+              <span class="phase-task__time">25m</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="phase-row phase-row--focus">
+          <div class="phase-row__label">
+            <span class="name">focus</span>
+            <span class="span">7:00 → 9:00</span>
+          </div>
+          <div class="phase-row__tasks">
+            <a class="phase-task phase-task--current" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">BEN-91 · Personal Context</span>
+                <span class="phase-task__title">Wire MIRA Phase 0 RAG scaffold</span>
+              </div>
+              <span class="phase-task__time">2h</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="phase-timeline__now" aria-hidden="true"></div>
+
+        <div class="phase-row phase-row--exercise">
+          <div class="phase-row__label">
+            <span class="name">exercise</span>
+            <span class="span">9:00 → 9:45</span>
+          </div>
+          <div class="phase-row__tasks">
+            <a class="phase-task" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">bench · problem</span>
+                <span class="phase-task__title">Two-sum variants — interview mode</span>
+              </div>
+              <span class="phase-task__time">45m</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="phase-row phase-row--winddown">
+          <div class="phase-row__label">
+            <span class="name">wind-down</span>
+            <span class="span">9:45 → 11:00</span>
+          </div>
+          <div class="phase-row__tasks">
+            <a class="phase-task" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">BEN-92 · Personal Context</span>
+                <span class="phase-task__title">Triage Charlie PR backlog</span>
+              </div>
+              <span class="phase-task__time">45m</span>
+            </a>
+            <a class="phase-task" href="#">
+              <div class="phase-task__main">
+                <span class="phase-task__id">CONSULT-7 · Consulting Launch</span>
+                <span class="phase-task__title">Landing page copy v2</span>
+              </div>
+              <span class="phase-task__time">30m</span>
+            </a>
+          </div>
+        </div>
+
+        <footer class="block-actions-foot">
+          <span>4h 30m planned · 30m slack</span>
+          <a href="#">extend block to 12p →</a>
+          <a href="#">defer CONSULT-7 to Friday →</a>
+          <a href="#">re-plan with MIRA →</a>
+        </footer>
+      </section>
+    </div>
+  </main>
+</section>
+
+<script src="./_switcher.js"></script>
+</body>
+</html>

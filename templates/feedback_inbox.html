@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Feedback inbox — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--feedback">
+  <header class="page__head">
+    <h1 class="page__title">Feedback inbox</h1>
+    <p class="page__meta">
+      GitHub-style triage for items left from the floating widget.
+      <strong>Open</strong> = needs a look · <strong>Backlog</strong> = deferred to a later cycle (v2, big scopes) ·
+      <strong>Closed</strong> = handled or dismissed.
+      A separate markdown digest is kept for each user, with an inbox and an archive.
+    </p>
+  </header>
+
+  <nav class="fb-tabs" aria-label="Feedback status">
+    {% for s in tab_statuses %}
+      <a class="fb-tab {% if active_status == s %}is-active{% endif %}"
+         href="/feedback/inbox?status={{ s }}{% if is_admin and not show_all %}&scope=mine{% endif %}">
+        <span class="fb-tab__dot fb-tab__dot--{{ s }}" aria-hidden="true"></span>
+        <span class="fb-tab__label">{{ s }}</span>
+        <span class="fb-tab__count">{{ counts[s] }}</span>
+      </a>
+    {% endfor %}
+    <span class="fb-tabs__spacer"></span>
+    {% if is_admin %}
+      {# Admin scope toggle (LIS-301). Default = all so the operator
+         sees alpha/beta user submissions; switch to "mine" to see
+         just self-submitted (parity with non-admin view). #}
+      <span class="fb-tabs__scope">
+        <a class="fb-scope {% if show_all %}is-active{% endif %}"
+           href="/feedback/inbox?status={{ active_status }}">all users</a>
+        ·
+        <a class="fb-scope {% if not show_all %}is-active{% endif %}"
+           href="/feedback/inbox?status={{ active_status }}&scope=mine">just mine</a>
+      </span>
+    {% else %}
+      <span class="fb-tabs__note muted">
+        Promoted items get a linked GitHub issue you can follow.
+      </span>
+    {% endif %}
+  </nav>
+
+  {# Sync diagnostic banner — surfaces WHY the bench/GH auto-archive
+     didn't fire on this open-tab visit. Only renders on the open tab
+     because sync only runs there. Silent on the happy path (sync ran,
+     nothing to close). Operator review 2026-05-28. #}
+  {% if active_status == "open" and sync_result %}
+    {% if sync_result.skipped_reason == "no_token" %}
+      <div class="fb-sync fb-sync--warn">
+        <strong>GitHub sync skipped</strong> — set <code>GITHUB_FEEDBACK_TOKEN</code>
+        in Fly secrets to auto-archive feedback whose linked GH issue is closed.
+        ({{ sync_result.linked_total }} open item{{ sync_result.linked_total != 1 and 's' or '' }}
+        with a linked issue waiting on this.)
+      </div>
+    {% elif sync_result.error %}
+      <div class="fb-sync fb-sync--err">
+        <strong>GitHub sync errored</strong> on this tick:
+        <code>{{ sync_result.error }}</code>.
+        Items aren't auto-archiving until the call goes through. Check the
+        token's scope + Fly logs (<code>flyctl logs -a lis-bench</code>) for the full traceback.
+      </div>
+    {% elif sync_result.changed %}
+      <div class="fb-sync fb-sync--ok">
+        <strong>GitHub sync ran</strong> — {{ sync_result.closed_count }} linked issue{{ sync_result.closed_count != 1 and 's' or '' }}
+        closed on GitHub got auto-archived here.
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <section class="page__section">
+    {% if items %}
+      <ul class="fb-list">
+        {% for fb in items %}
+          <li class="fb-item fb-item--{{ fb.status }}">
+            <header class="fb-item__head">
+              <span class="fb-item__id">#{{ fb.id }}</span>
+              <span class="fb-item__status fb-item__status--{{ fb.status }}">{{ fb.status }}</span>
+              <span class="muted">{{ fb.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+              {% if fb.theme %}<span class="tag">{{ fb.theme }}</span>{% endif %}
+              {% if fb.viewport_width %}<span class="tag">{{ fb.viewport_width }}px</span>{% endif %}
+              {% if show_all %}
+                {# Admin scope only — surface the submitter so the operator
+                   can tell self-submitted from alpha-user submissions
+                   without opening another tab. #}
+                <span class="tag tag--submitter" title="Submitter user_id">{{ fb.user_id[:8] }}…</span>
+              {% endif %}
+              {% if fb.gh_issue_number %}
+                <a class="tag tag--gh" href="{{ fb.gh_issue_url }}" target="_blank" rel="noopener" title="View on GitHub">
+                  gh#{{ fb.gh_issue_number }} ↗
+                </a>
+              {% endif %}
+              {% set page_url = (fb.url or '')|trim %}
+              {% if (page_url.startswith('/') and not page_url.startswith('//')) or page_url.lower().startswith(('https://', 'http://')) %}
+                <a class="fb-item__url" href="{{ page_url }}" target="_blank" rel="noopener">{{ fb.url }}</a>
+              {% else %}
+                <span class="fb-item__url">{{ fb.url }}</span>
+              {% endif %}
+            </header>
+            <p class="fb-item__body">{{ fb.body }}</p>
+            {% set atts = attachments_by_fb.get(fb.id) if attachments_by_fb else none %}
+            {% if atts %}
+              <p class="fb-item__attachments">
+                {% for att in atts %}
+                  <a href="/feedback/attachment/{{ att.id }}" target="_blank" rel="noopener"
+                     title="{{ att.filename }} · {{ (att.byte_size / 1024) | round | int }} KB">
+                    <img class="fb-item__thumb" src="/feedback/attachment/{{ att.id }}"
+                         alt="attachment: {{ att.filename }}" loading="lazy">
+                  </a>
+                {% endfor %}
+              </p>
+            {% endif %}
+            {% if fb.processing_notes %}
+              <p class="muted fb-item__notes-display">note: {{ fb.processing_notes }}</p>
+            {% endif %}
+            {% if is_admin and fb.promoted_at and not fb.gh_issue_url %}
+              <p class="muted" role="status">GitHub promotion is in progress or its outcome is uncertain. Another issue will not be created automatically.</p>
+              {% if promotion_search_urls and promotion_search_urls.get(fb.id) %}
+                <p><a class="action-link" href="{{ promotion_search_urls[fb.id] }}" target="_blank" rel="noopener">Find the existing issue on GitHub</a></p>
+              {% endif %}
+              <form method="post" action="/feedback/{{ fb.id }}/reconcile">
+                <label for="feedback-issue-{{ fb.id }}">Existing GitHub issue URL</label>
+                <input id="feedback-issue-{{ fb.id }}" name="issue_url" type="url" required>
+                <button type="submit" class="muted-button">Verify and attach issue</button>
+              </form>
+            {% endif %}
+            <footer class="fb-item__actions">
+              {% if active_status == "open" %}
+                {% if is_admin and not fb.gh_issue_url and not fb.promoted_at %}
+                  {# Promote to GitHub Issue. Admin-only, unpromoted-only.
+                     Once promoted the row keeps the gh link (above) and
+                     this button disappears. #}
+                  <form method="post" action="/feedback/{{ fb.id }}/promote" class="form-field">
+                    <button type="submit" class="muted-button" title="Create a GitHub issue for this feedback">
+                      → promote to GH issue
+                    </button>
+                  </form>
+                {% endif %}
+                {# `return_to` carries the current tab back to the
+                   handler so closing/backlogging stays on the open
+                   page instead of redirecting to the closed tab.
+                   Operator request 2026-05-28. #}
+                <form method="post" action="/feedback/{{ fb.id }}/backlog" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <label class="form-field__label" for="feedback-defer-{{ fb.id }}">Reason to defer (optional)</label>
+                  <input id="feedback-defer-{{ fb.id }}" type="text" name="processing_notes" class="fb-item__notes">
+                  <button type="submit" class="muted-button">→ backlog</button>
+                </form>
+                <form method="post" action="/feedback/{{ fb.id }}/archive" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <label class="form-field__label" for="feedback-resolve-{{ fb.id }}">Resolution note (optional)</label>
+                  <input id="feedback-resolve-{{ fb.id }}" type="text" name="processing_notes" class="fb-item__notes">
+                  <button type="submit" class="muted-button">close (done)</button>
+                </form>
+                <form method="post" action="/feedback/{{ fb.id }}/dismiss" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <button type="submit" class="muted-button">close (dismiss)</button>
+                </form>
+              {% elif active_status == "backlog" %}
+                <form method="post" action="/feedback/{{ fb.id }}/reopen" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <button type="submit" class="muted-button">reopen</button>
+                </form>
+                <form method="post" action="/feedback/{{ fb.id }}/archive" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <label class="form-field__label" for="feedback-resolve-{{ fb.id }}">Resolution note (optional)</label>
+                  <input id="feedback-resolve-{{ fb.id }}" type="text" name="processing_notes" class="fb-item__notes">
+                  <button type="submit" class="muted-button">close (done)</button>
+                </form>
+              {% else %}{# closed #}
+                <form method="post" action="/feedback/{{ fb.id }}/reopen" class="form-field">
+                  <input type="hidden" name="return_to" value="{{ active_status }}">
+                  <button type="submit" class="muted-button">reopen</button>
+                </form>
+              {% endif %}
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No items in <strong>{{ active_status }}</strong>.</p>
+    {% endif %}
+  </section>
+</article>
+
+{% endblock %}

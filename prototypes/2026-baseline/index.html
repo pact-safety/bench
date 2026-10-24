@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototypes · 2026 baseline — Li's Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="./_prototype.css">
+</head>
+<body>
+<div class="proto-banner">prototype · throwaway · <a href="https://github.com/LiBearden/research-engineer-interview-prep/blob/main/prototypes/2026-baseline/README.md">README</a></div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/">Li's Bench</a>
+    <span class="alpha-pill">prototype · 2026 baseline</span>
+  </div>
+</header>
+<main class="container">
+  <article class="page">
+    <header class="page__head">
+      <h1 class="page__title">2026 baseline prototype set</h1>
+      <p class="page__meta">Three structural decisions in play, three variants each. The amber is the same in all three; what differs is layout, nav, and density. Pick by gut, not by polish — these are mockups.</p>
+    </header>
+
+    <section class="page__section">
+      <h2 class="section-label">Surfaces</h2>
+      <ul class="library-list">
+        <li class="library-row">
+          <a class="library-row__main" href="./today.html?variant=A">
+            <span class="library-row__title">Today / home</span>
+            <div class="library-row__meta">
+              <span class="badge">dashboard density</span>
+              <span class="muted">day nav · sectioned stack · daily picks</span>
+            </div>
+          </a>
+        </li>
+        <li class="library-row">
+          <a class="library-row__main" href="./problem.html?variant=A">
+            <span class="library-row__title">Problem</span>
+            <div class="library-row__meta">
+              <span class="badge">interactive · code</span>
+              <span class="muted">HTMX swap mock · badges · phase layout · code blocks</span>
+            </div>
+          </a>
+        </li>
+        <li class="library-row">
+          <a class="library-row__main" href="./writings.html?variant=A">
+            <span class="library-row__title">Writings</span>
+            <div class="library-row__meta">
+              <span class="badge">narrow prose</span>
+              <span class="muted">container--narrow · 720px · serif vs sans body trial</span>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section class="page__section">
+      <h2 class="section-label">The three variants</h2>
+      <p>Each surface renders A, B, and C — the floating bar at the bottom of every page flips between them. Keys 1 / 2 / 3 also flip.</p>
+      <table style="width:100%; border-collapse: collapse; margin-top: var(--space-4);">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <th style="text-align:left; padding: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted);">variant</th>
+            <th style="text-align:left; padding: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted);">nav</th>
+            <th style="text-align:left; padding: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted);">density</th>
+            <th style="text-align:left; padding: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-widest); color: var(--text-muted);">today comp.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: var(--space-3) var(--space-2);"><strong>A</strong></td>
+            <td style="padding: var(--space-3) var(--space-2);">Palette-primary (⌘K is discovery; visible nav is minimal)</td>
+            <td style="padding: var(--space-3) var(--space-2);">Comfortable</td>
+            <td style="padding: var(--space-3) var(--space-2);">Single-column relevant-now stack</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: var(--space-3) var(--space-2);"><strong>B</strong></td>
+            <td style="padding: var(--space-3) var(--space-2);">Visible-rail (every section up top)</td>
+            <td style="padding: var(--space-3) var(--space-2);">Comfortable</td>
+            <td style="padding: var(--space-3) var(--space-2);">Two-column primary + side rail</td>
+          </tr>
+          <tr>
+            <td style="padding: var(--space-3) var(--space-2);"><strong>C</strong></td>
+            <td style="padding: var(--space-3) var(--space-2);">Hybrid (3 grouped dropdowns + visible ⌘K hint)</td>
+            <td style="padding: var(--space-3) var(--space-2);">Compact</td>
+            <td style="padding: var(--space-3) var(--space-2);">Four-card grid</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="page__section">
+      <h2 class="section-label">How to view</h2>
+      <p>From the repo root: <code>python3 -m http.server 8765</code>, then open <a href="http://localhost:8765/prototypes/2026-baseline/">localhost:8765/prototypes/2026-baseline/</a>. Pages pull the real <code>static/css/tokens.css</code> + <code>static/css/main.css</code>; the amber + dark surface you see is what the live app would look like with the proposed structural change.</p>
+    </section>
+  </article>
+</main>
+</body>
+</html>

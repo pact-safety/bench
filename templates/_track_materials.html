@@ -1,0 +1,25 @@
+{% macro activity(card, track) %}
+<a class="content-card" href="{{ card.url }}">
+  <div class="content-card__meta">
+    <span class="content-card__kind">{{ track.title }}</span>
+    {% if card.section.optional %}<span class="badge">optional refresher</span>{% endif %}
+    {% if card.section.duration_min %}<span class="content-card__duration">{{ card.section.duration_min }} min</span>{% endif %}
+  </div>
+  <h3 class="content-card__title">{{ card.section.title }}</h3>
+  <p class="next-action__why">{% if card.session.get('next_action') %}Saved next step: {{ card.session.next_action }}{% else %}Open this learning item to work with the source, reflect, and rate it.{% endif %}</p>
+</a>
+{% endmacro %}
+
+{% macro supplements(materials) %}
+{% if materials.supplements %}
+<details class="page__section">
+  <summary>Math, Python, and supplemental prework · {{ materials.optional_completed }}/{{ materials.optional_total }} checked</summary>
+  <p class="muted">Choose the refreshers you need. Essential knowledge is labeled inside each section; completing every resource is optional.</p>
+  <ul class="library-list">
+  {% for item in materials.supplements %}
+    <li class="library-row"><a class="library-row__main" href="{{ item.url }}"><span class="library-row__title">{{ item.section.title }}</span>{% if item.completed %}<span class="badge">done</span>{% elif item.exemption %}<span class="badge">tested out</span>{% endif %}</a></li>
+  {% endfor %}
+  </ul>
+</details>
+{% endif %}
+{% endmacro %}

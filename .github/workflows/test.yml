@@ -1,0 +1,126 @@
+name: Test
+
+# Run unit tests on every push + every PR. No DB, no network — just
+# the in-process Anthropic mock + the deterministic fallbacks.
+# Integration tests need real Supabase + Anthropic creds; those run
+# only on main (separate workflow if added later).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # `.[dev]` brings pytest + pytest-mock. The `ml` extra
+          # (torch) is heavy and not needed for unit tests — the
+          # in-process Anthropic mock covers the LLM-touching paths.
+          pip install -e ".[dev]"
+
+      - name: Run unit tests
+        env:
+          # The conftest sets LIS_SKIP_STARTUP_LOAD=1 already; just
+          # double-belt-and-suspenders here.
+          LIS_SKIP_STARTUP_LOAD: "1"
+        run: |
+          pytest tests/unit/ -x --tb=short
+
+  # FRONTEND-1a: the islands' own fast tier — vitest on the mount
+  # runtime + a production build so a broken island chunk fails CI,
+  # not the Docker deploy. Python tiers above are untouched.
+  islands:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-fund --no-audit
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  # FRONTEND-1c: island E2E — the real app (uvicorn, LIS_LOCAL_MODE)
+  # against a throwaway Postgres. pgvector image because migration 014
+  # needs the vector extension; scripts/e2e_bootstrap.sql stubs the
+  # Supabase auth surface (citext, auth.users, seeded local user).
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: e2e
+        ports: ["54329:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python deps (into .venv — playwright.config expects it)
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install JS deps + browsers
+        run: |
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps chromium
+
+      - name: Build islands
+        run: npm run build
+
+      - name: Bootstrap throwaway DB
+        run: |
+          sudo apt-get install -y -q postgresql-client >/dev/null
+          psql postgresql://postgres:e2e@127.0.0.1:54329/postgres \
+            -f scripts/e2e_bootstrap.sql
+
+      - name: Run Playwright
+        env:
+          E2E_DATABASE_URL: postgresql://postgres:e2e@127.0.0.1:54329/postgres
+        run: npm run e2e
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

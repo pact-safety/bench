@@ -1,0 +1,60 @@
+{# First-run onboarding strips (design handoff: onboarding-bubbles).
+   Three macros:
+
+     slot(anchor)  — place immediately BEFORE the element being annotated.
+                     Always renders; fills only when the server says this
+                     anchor holds the surface's current tip.
+     strip(tip)    — the band itself. Also used by the /settings/bubbles
+                     endpoint's out-of-band reply, so the markup exists once.
+
+     dismissal_forms() — render outside page forms; refresh with each OOB reply.
+
+   Requires `bubbles` in the template context (routes pass
+   bubbles=onboarding_bubbles.bubble_state(...)); pages without it fall
+   back to the None template global and every slot renders empty.
+#}
+
+{% macro slot(anchor) -%}
+  {%- set tip = bubbles.current if bubbles and bubbles.current and bubbles.current.anchor == anchor else none -%}
+  <div class="ob-bubble-slot"
+       id="ob-slot-{{ bubbles.surface if bubbles else 'none' }}-{{ anchor }}"
+       aria-live="polite">{% if tip %}{{ strip(tip) }}{% endif %}</div>
+{%- endmacro %}
+
+{% macro strip(tip) -%}
+  <div class="ob-bubble">
+    <div class="ob-bubble__body">
+      <span class="ob-bubble__kicker">tip {{ tip.index }} of {{ tip.total }} — {{ tip.label }}</span>
+      <p class="ob-bubble__text">{{ tip.body }}</p>
+      <div class="ob-bubble__actions">
+        {# Explicit owners keep these controls out of any surrounding page form. #}
+        <button type="submit" form="ob-bubble-form-seen" class="ob-bubble__next">
+          {{ 'Got it →' if tip.index < tip.total else 'Got it' }}
+        </button>
+        {% if tip.index < tip.total %}
+          <button type="submit" form="ob-bubble-form-skip" class="ob-bubble__skip">Skip all</button>
+        {% endif %}
+        <button type="submit" form="ob-bubble-form-skip" class="ob-bubble__close"
+                aria-label="Dismiss tips on this page">&#10005;</button>
+      </div>
+    </div>
+  </div>
+{%- endmacro %}
+
+
+{% macro dismissal_forms(oob=false) -%}
+  {# Keep forms outside page forms. Hidden actions also work with HTMX 1.9,
+     which does not reliably track submit buttons with external form owners. #}
+  {% for action in ['seen', 'skip'] %}
+    <form id="ob-bubble-form-{{ action }}" method="post" action="/settings/bubbles"
+          hx-post="/settings/bubbles" hx-swap="none"
+          {% if oob %}hx-swap-oob="outerHTML"{% endif %}>
+      {% if bubbles and bubbles.current %}
+        <input type="hidden" name="surface" value="{{ bubbles.current.surface }}">
+        <input type="hidden" name="tip" value="{{ bubbles.current.id }}">
+        <input type="hidden" name="action" value="{{ action }}">
+        <input type="hidden" name="next" value="{{ bubble_next_url | default(request.url.path) }}">
+      {% endif %}
+    </form>
+  {% endfor %}
+{%- endmacro %}

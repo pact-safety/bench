@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Before Today — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="assess-result imposter-intercept">
+  <header class="assess-result__head">
+    {% if has_credential_gap %}
+      <h1>Your credentials say something different</h1>
+      <p class="muted">
+        Your self-ratings came in <strong>{{ credential_phrase }}</strong>
+      </p>
+    {% else %}
+      <h1>It's OK to be unsure here</h1>
+      <p class="muted">
+        You chose "not sure" often in onboarding. That's a common pattern
+        in senior-engineer prep, and it usually improves quickly with
+        a week of steady wins.
+      </p>
+      <p class="muted">
+        We'll start with warmups first, then accelerate as your attempt
+        data comes in.
+      </p>
+    {% endif %}
+  </header>
+
+  <section class="assess-result__suggestion imposter-intercept__axes">
+    <h2>{% if has_credential_gap %}Top triggering axes{% else %}Top focus axes for your first week{% endif %}</h2>
+    {% if axis_rows %}
+      <ul>
+        {% for row in axis_rows %}
+          <li>
+            <strong>{{ row.axis_label }}</strong>
+            <span class="muted">
+              {% if row.credential_pct is not none %}
+                credential {{ row.credential_pct }}% ·
+              {% endif %}
+              self {{ row.self_pct }}%
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">
+        We'll use your next few attempts as calibration and adjust quickly.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="assess-result__continue">
+    <a class="primary-link" href="/">Continue to Today</a>
+  </section>
+</article>
+
+{% endblock %}

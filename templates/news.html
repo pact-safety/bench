@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}News — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--news">
+  <header class="page__head">
+    <h1 class="page__title">News</h1>
+    <p class="page__meta">
+      What landed overnight from labs, alignment forum, and curated commentary.
+      Pulled hourly from <code>content/news_feeds.toml</code>.
+      Pin items worth re-reading; dismiss the noise.
+      {% if items %}
+        <span class="muted">· showing {{ items | length }} item{{ items|length != 1 and 's' or '' }}</span>
+      {% endif %}
+    </p>
+  </header>
+
+  {# Filter chips — only render if we have ≥2 sources, else the row
+     adds noise. The "All" chip clears the filter. #}
+  {% if sources_present and sources_present | length > 1 %}
+    <section class="page__section">
+      <h2 class="section-label">Filter by source</h2>
+      <ul class="news-facets">
+        <li>
+          <a class="news-facet {% if not selected_source %}news-facet--active{% endif %}"
+             href="/news{% if show_dismissed %}?show_dismissed=1{% endif %}">All</a>
+        </li>
+        {% for slug in sources_present %}
+          <li>
+            <a class="news-facet {% if selected_source == slug %}news-facet--active{% endif %}"
+               href="/news?source={{ slug }}{% if show_dismissed %}&show_dismissed=1{% endif %}">
+              {{ feed_names.get(slug, slug) }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if items %}
+    <section class="page__section">
+      <ol class="news-items">
+        {% for item in items %}
+          <li class="news-item
+                     {% if item.is_pinned %}news-item--pinned{% endif %}
+                     {% if item.is_dismissed %}news-item--dismissed{% endif %}"
+              data-source="{{ item.source }}"
+              data-item-id="{{ item.id }}">
+            <header class="news-item__head">
+              <span class="news-item__source">
+                <a href="/news?source={{ item.source }}">{{ feed_names.get(item.source, item.source) }}</a>
+              </span>
+              <time class="news-item__time muted small"
+                    datetime="{{ item.published_at.isoformat() }}">
+                {{ item.published_at.strftime('%Y-%m-%d') }}
+              </time>
+              {% if item.is_pinned %}
+                <span class="news-item__pin-badge" title="pinned">★</span>
+              {% endif %}
+            </header>
+            <h3 class="news-item__title">
+              <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">
+                {{ item.title }}
+              </a>
+            </h3>
+            {% if item.summary %}
+              <p class="news-item__summary muted">
+                {{ item.summary[:280] }}{% if item.summary | length > 280 %}…{% endif %}
+              </p>
+            {% endif %}
+            <footer class="news-item__actions">
+              <form method="post" action="/news/{{ item.id }}/pin" class="news-item__action">
+                {% if item.is_pinned %}
+                  <input type="hidden" name="unpin" value="1">
+                  <button type="submit" class="muted-button">unpin</button>
+                {% else %}
+                  <button type="submit" class="muted-button">pin</button>
+                {% endif %}
+              </form>
+              <form method="post" action="/news/{{ item.id }}/dismiss" class="news-item__action">
+                {% if item.is_dismissed %}
+                  <input type="hidden" name="undismiss" value="1">
+                  <button type="submit" class="muted-button">restore</button>
+                {% else %}
+                  <button type="submit" class="muted-button">dismiss</button>
+                {% endif %}
+              </form>
+            </footer>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% else %}
+    <section class="page__section news-empty">
+      <h2 class="section-label">No items yet</h2>
+      <p class="muted">
+        Either the poller hasn't run yet (it ticks hourly; see fly logs
+        for <code>[news_poller]</code> lines) or every item is currently
+        dismissed.
+        {% if not show_dismissed %}
+          <a href="/news?show_dismissed=1">Show dismissed →</a>
+        {% endif %}
+      </p>
+      <p class="muted small">
+        Feed registry: <code>content/news_feeds.toml</code>.
+        Add or remove feeds there; changes apply on the next tick.
+      </p>
+    </section>
+  {% endif %}
+
+  {% if show_dismissed and items %}
+    <p class="muted small news-toggle">
+      Showing dismissed items. <a href="/news{% if selected_source %}?source={{ selected_source }}{% endif %}">hide dismissed</a>
+    </p>
+  {% elif items and not show_dismissed %}
+    <p class="muted small news-toggle">
+      <a href="/news?show_dismissed=1{% if selected_source %}&source={{ selected_source }}{% endif %}">show dismissed →</a>
+    </p>
+  {% endif %}
+</article>
+
+{% endblock %}

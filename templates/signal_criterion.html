@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ criterion.title }} — Signal{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--signal">
+  <header class="page__head">
+    <p class="page__meta"><a class="action-link" href="/signal">← Signal</a></p>
+    <h1 class="page__title">{{ criterion.title }}</h1>
+    <p class="page__meta">
+      <span class="tag">{{ criterion.track }}</span>
+      {% if criterion.effort_hours %}<span class="muted">~{{ criterion.effort_hours }}h to a strong version</span>{% endif %}
+      {% for axis in criterion.axes %}<span class="tag">{{ axis.replace('_', ' ') }}</span>{% endfor %}
+    </p>
+  </header>
+
+  <section class="page__section md">
+    {{ criterion.body_md | markdown }}
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Your evidence</h2>
+    {% if artifacts %}
+      <ul class="fb-list">
+        {% for a in artifacts %}
+          <li class="fb-item">
+            <header class="fb-item__head">
+              <span class="mira-card__title">
+                {% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}</a>
+                {% else %}{{ a.title }}{% endif %}
+              </span>
+              <span class="tag">{{ a.strength }}</span>
+              {% if a.created_at %}<span class="muted">{{ a.created_at.strftime('%b %d, %Y') }}</span>{% endif %}
+            </header>
+            {% if a.claim_md %}<p class="fb-item__body">{{ a.claim_md }}</p>{% endif %}
+            <footer class="fb-item__actions">
+              <form method="post" action="/signal/evidence/{{ a.id }}/strength">
+                <input type="hidden" name="criterion" value="{{ criterion.slug }}">
+                <label class="visually-hidden" for="str-{{ a.id }}">Strength for {{ a.title }}</label>
+                <select id="str-{{ a.id }}" name="strength">
+                  {% for s in strengths %}
+                    <option value="{{ s }}" {% if s == a.strength %}selected{% endif %}>{{ s }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="muted-button">Rate</button>
+              </form>
+              <form method="post" action="/signal/evidence/{{ a.id }}/delete" style="margin-left: auto;">
+                <input type="hidden" name="criterion" value="{{ criterion.slug }}">
+                <button type="submit" class="muted-button">Remove</button>
+              </form>
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">
+        Nothing recorded against this yet. If you have already done something
+        here, record it — unrecorded work is invisible work, and rating it
+        honestly against the list above is the point of the exercise.
+      </p>
+    {% endif %}
+
+    <details class="mira-add">
+      <summary>+ Add evidence</summary>
+      <form method="post" action="/signal/evidence">
+        <input type="hidden" name="criterion" value="{{ criterion.slug }}">
+        <div class="form-field">
+          <label class="form-field__label" for="ev-title">What is it</label>
+          <input id="ev-title" type="text" name="title" required
+                 placeholder="Inspect eval for refusal-consistency under paraphrase">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="ev-url">Link <span class="muted">(what a reviewer opens)</span></label>
+          <input id="ev-url" type="url" name="url" placeholder="https://github.com/...">
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="ev-claim">What it demonstrates, in one sentence</label>
+          <textarea id="ev-claim" name="claim_md" rows="2"
+                    placeholder="If you can't say it in one sentence, that is usually the weak version."></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="ev-strength">Honest rating against the list above</label>
+          <select id="ev-strength" name="strength">
+            {% for s in strengths %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Record it</button>
+        </div>
+      </form>
+    </details>
+  </section>
+</article>
+
+{% endblock %}

@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{# Home uses the full 1080px container. User feedback (in-app #24)
+   pushed back on the narrow-container redesign: empty side margins
+   read as wasted space, not as breathing room. We keep the container
+   wide and put the breathing room INTO the layout via section gaps
+   and the .home-grid 2-column layout below. /readiness and reading-
+   heavy detail pages still narrow themselves where it's appropriate. #}
+{% block body %}
+{# The URL of the current Up-next, used to suppress redundant section
+   cards below (if the Reading section's daily pick IS the Up-next,
+   showing it again is just noise). Computed once at top. #}
+{% set next_url = next_action.url if next_action else None %}
+
+{% if not has_assessment %}
+  <section class="home-banner">
+    <span>You haven't completed the initial assessment. Your scheduler is running on defaults.</span>
+    <a class="primary-link" href="/onboarding">Take it now</a>
+  </section>
+{% endif %}
+
+{# One-shot orientation toast — fires only on the redirect from
+   /onboarding/skip (?toast=ramp_intro). Any other navigation drops
+   the query param so the toast doesn't haunt the user. Tells them
+   why everything looks easy so the home page explains itself on
+   the fresh-skip path. #}
+{% if toast == 'ramp_intro' and ramp_active %}
+  <section class="home-toast" role="status" aria-live="polite">
+    <strong>Welcome —</strong> easy problems surface first for your
+    first {{ ramp_threshold }} attempts. The bias fades as you
+    accumulate signal, and you can take the assessment any time to
+    skip the ramp.
+  </section>
+{% endif %}
+
+<header class="today__head">
+  <nav class="today__nav" aria-label="day navigation">
+    <a class="today__nav-arrow" href="/journal/{{ yesterday }}" title="Yesterday's journal">←</a>
+    <span class="today__date" aria-label="today's date">{{ today_date }}</span>
+    <span class="today__nav-arrow today__nav-arrow--disabled" aria-disabled="true" title="Today is the latest">→</span>
+  </nav>
+  <h1 class="today__title">
+    <span id="hero-greeting" data-display-name="{{ display_name or '' }}"></span>
+    <script>
+      (function () {
+        const greetingEl = document.getElementById('hero-greeting');
+        if (!greetingEl) return;
+
+        const hr = new Date().getHours();
+        let greeting;
+        if (hr < 5) greeting = 'Up late';
+        else if (hr < 12) greeting = 'Good morning';
+        else if (hr < 17) greeting = 'Good afternoon';
+        else if (hr < 22) greeting = 'Good evening';
+        else greeting = 'Working late';
+
+        const displayName = greetingEl.dataset.displayName || '';
+        greetingEl.textContent = displayName ? `${greeting}, ${displayName}` : greeting;
+      })();
+    </script>
+  </h1>
+  {% if active_jd and not active_track_progress %}
+    <p class="today__hint">
+      Focused on <strong><a href="/aim/jd/{{ active_jd.id }}">{{ active_jd.title | jd_title }}</a></strong>{% if active_jd.org %} · {{ active_jd.org }}{% endif %} ·
+      <a href="/readiness">readiness →</a> ·
+      <a href="/aim#aim">manage JDs →</a>
+    </p>
+  {% elif suggestion and not active_track_progress %}
+    <p class="today__hint">
+      Suggested focus: <strong>{{ suggestion.axis_label }}</strong> ·
+      <a href="/problem/{{ suggestion.problem.slug }}">{{ suggestion.problem.title }}</a>
+    </p>
+  {% endif %}
+</header>
+
+{# ──────────────────────────────────────────────────────────────
+   Two-column layout (WS4, 2026-05-28). Operator picked variant B
+   from the WS2 prototype: primary column = relevant-now (existing
+   sections, kept as-is); right rail = dashboard glance (top active
+   initiatives, 7-day signal, weak axis). Mobile (<=900px) collapses
+   to single column with the rail below primary content.
+
+   Designed mobile-port-ready per the WS4 brief — every rail card
+   is a vertical list, no horizontal-only layouts.
+   ────────────────────────────────────────────────────────────── #}
+<div class="home-layout">
+<div class="home-layout__primary">
+
+{% if active_track_progress %}
+  <a class="track-progress track-progress--linked"
+     href="/tracks/{{ active_track_progress.track_slug }}"
+     aria-label="Open track {{ active_track_progress.track_title }}">
+    <p class="track-progress__label">
+      <strong>{{ active_track_progress.track_title }}</strong> ·
+      {% if active_track_progress.optional_total %}core {% endif %}checkpoints {{ active_track_progress.passed_count }} of {{ active_track_progress.total }}
+      {% if active_track_progress.exempt_count %} · {{ active_track_progress.exempt_count }} tested out{% endif %}
+      {% if active_track_progress.next_section_number %}
+        · next unlocked section {{ active_track_progress.next_section_number }}
+      {% endif %}
+    </p>
+    <div class="track-progress__bar">
+      <div class="track-progress__fill" style="width: {{ active_track_progress.pct }}%"></div>
+    </div>
+  </a>
+{% else %}
+  {# Daily-progress strip. 5 slots (Reading / Listening / Practicing /
+     Composing / Writing). Each segment lights up when its slot is
+     done today. Lives between the date header and the Up next card
+     so the at-a-glance "where am I today" answer is the first thing
+     the user sees after the greeting. #}
+  <section class="daily-progress" aria-label="Today's progress">
+    <div class="daily-progress__head">
+      <span class="daily-progress__label">Today</span>
+      <span class="daily-progress__count">{{ daily_done }} / {{ daily_total }} done</span>
+    </div>
+    <ol class="daily-progress__segments">
+      {% for slot in daily_slots %}
+        <li class="daily-progress__seg {% if slot.done %}daily-progress__seg--done{% endif %}"
+            title="{{ slot.label }} — {% if slot.done %}done today{% else %}not yet{% endif %}">
+          <span class="daily-progress__seg-label">{{ slot.label }}</span>
+          {% if slot.done %}<span class="daily-progress__seg-check" aria-hidden="true">✓</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endif %}
+
+{% if next_action %}
+  {# Single "do this next" hero card. Advances as the user completes
+     items. /today/next 303s to the same URL, so Next → buttons on
+     each action page just keep the flow moving. #}
+{% import "_bubbles.html" as b with context %}
+  {{ b.slot('next_action') }}
+  <section class="next-action next-action--{{ next_action.kind }}" aria-label="Next action">
+    {% if next_action.kind == 'caught_up' %}
+      <div class="next-action__head">
+        <span class="next-action__verb">{{ next_action.verb }}</span>
+        <span class="next-action__badge">{{ next_action.badge }}</span>
+      </div>
+      <h2 class="next-action__title">{{ next_action.title }}</h2>
+      <p class="next-action__why">{{ next_action.why }}</p>
+      <div class="next-action__cta">
+        <a class="primary-link" href="{{ next_action.url }}">Browse library →</a>
+        {% if has_warmups %}
+          <a class="muted" href="/warmup">or pick a warmup</a>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="next-action__head">
+        <span class="next-action__verb">{{ next_action.verb }}</span>
+        {% if next_action.badge %}<span class="next-action__badge">{{ next_action.badge }}</span>{% endif %}
+        {% if next_action.difficulty and next_action.difficulty|trim %}<span class="badge badge--diff">{{ next_action.difficulty }}</span>{% endif %}
+        {% if next_action.duration_min %}<span class="next-action__duration">{{ next_action.duration_min }} min</span>{% endif %}
+        <span class="next-action__label muted">Up next</span>
+      </div>
+      <h2 class="next-action__title">
+        <a href="{{ next_action.url }}">{{ next_action.title }}</a>
+      </h2>
+      <p class="next-action__why">{{ next_action.why }}</p>
+      {# Ramp is user state, not a property of practice cards. Render
+         on every Up-next kind so a reader landing on a Reading hero
+         still sees "you're in ramp mode" instead of having to guess
+         why their picks look easy. #}
+      {% if ramp_active and not active_track_progress %}
+        <p class="next-action__ramp muted">
+          <strong>Onboarding ramp</strong> · {{ ramp_attempt_count }} / {{ ramp_threshold }} attempts
+          · easier problems surface first; the bias fades as you accumulate signal.
+        </p>
+      {% endif %}
+      <div class="next-action__cta">
+        <a class="primary-link" href="{{ next_action.url }}">{{ next_action.verb }} →</a>
+        {% if next_action.resume_url %}
+          <a class="action-link" href="{{ next_action.resume_url }}">Resume section →</a>
+        {% else %}
+          <span class="muted next-action__skip">or scroll down to pick another slot</span>
+        {% endif %}
+      </div>
+      {% if next_action.resume_note %}
+        <p class="next-action__why">Saved next step: {{ next_action.resume_note }}</p>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if next_action %}
+<p class="today-block__aside"><a href="/mira{% if next_action.url and next_action.url.startswith('/problem/') %}?problem={{ next_action.url.split('/problem/', 1)[1].split('?', 1)[0] | urlencode }}{% endif %}">Think it through with Mira →</a><span class="muted"> · questions and reflection, without answers</span></p>
+{% endif %}
+
+{% if due_review and next_action and next_action.kind in ['track_section', 'track_checkpoint'] %}
+  <section class="today-block" aria-labelledby="due-review-heading" aria-live="polite">
+    <header class="today-block__head">
+      <h2 class="section-label" id="due-review-heading">Due again</h2>
+    </header>
+    <a class="content-card" href="{{ due_review.url }}">
+      <h3 class="content-card__title">{{ due_review.verb }} · {{ due_review.title }}</h3>
+      <p class="next-action__why">{{ due_review.why }}</p>
+    </a>
+  </section>
+{% endif %}
+
+{% macro content_card(item, progress, done_today=false) %}
+  {% set done = progress and progress.status == 'completed' %}
+  <a class="content-card {% if done %}content-card--done{% endif %}" href="/content/{{ item.slug }}">
+    <div class="content-card__meta">
+      <span class="content-card__kind">{{ item.kind }}</span>
+      {% if item.duration_min %}<span class="content-card__duration">{{ item.duration_min }} min</span>{% endif %}
+      {% if done %}<span class="content-card__status">✓ {% if done_today %}done today{% else %}done{% endif %}</span>{% endif %}
+    </div>
+    <h3 class="content-card__title">{{ item.title }}</h3>
+    <div class="content-card__source">
+      {% if item.source %}<span>{{ item.source }}</span>{% endif %}
+      {% for a in item.axes %}<span class="tag tag--axis">{{ a.replace('_',' ') }}</span>{% endfor %}
+    </div>
+  </a>
+{% endmacro %}
+
+{% if track_materials %}
+<details class="today-block"><summary>Readings, videos, math, and other track work</summary>
+{% import "_track_materials.html" as tm %}
+{% for kind, label in [('reading', 'Reading'), ('watch', 'Watching'), ('exercise', 'Practicing')] %}
+<section class="today-block" aria-label="{{ label }} for your active track">
+  <header class="today-block__head"><h2 class="section-label">{{ label }}</h2><span class="muted">active track</span></header>
+  {% if track_materials.cards.get(kind) %}
+    {{ tm.activity(track_materials.cards[kind], track_materials.track) }}
+  {% else %}
+    <p class="muted">No unfinished {{ label | lower }} section is unlocked in this track. <a href="/tracks/{{ track_materials.track.slug }}">View progress and prerequisites →</a></p>
+  {% endif %}
+</section>
+{% endfor %}
+{{ tm.supplements(track_materials) }}
+<p class="muted">Your general reading stack is still available in the <a href="/library">Library</a>.</p>
+</details>
+{% else %}
+{# Section cards are suppressed when their daily pick IS the current
+   Up-next — no point rendering the same item twice. The done-today
+   tray below still surfaces what was completed, so nothing is lost. #}
+{% set reading_is_up_next = reading_card_item and (not reading_card_done_today) and next_url == "/content/" ~ reading_card_item.slug %}
+{% set watch_is_up_next = watch_card_item and (not watch_card_done_today) and next_url == "/content/" ~ watch_card_item.slug %}
+{% set exercise_is_up_next = exercise_card_item and (not exercise_card_done_today) and next_url == "/content/" ~ exercise_card_item.slug %}
+
+{% if not reading_is_up_next %}
+<section class="today-block">
+  <header class="today-block__head">
+    <h2 class="section-label">Reading {% if reading_card_done_today %}<span class="today-block__done">✓</span>{% endif %}</h2>
+    {% if reading_card_item %}<span class="muted today-block__count">{% if reading_card_done_today %}done today{% else %}today{% endif %}</span>{% endif %}
+  </header>
+  {% if reading_card_item %}
+    {{ content_card(reading_card_item, progress_by_id.get(reading_card_item.id), done_today=reading_card_done_today) }}
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-state__msg">No reading queued. Once your stack is loaded, one chapter or paper section will appear here daily.</p>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if not watch_is_up_next %}
+<section class="today-block">
+  <header class="today-block__head">
+    <h2 class="section-label">Listening {% if watch_card_done_today %}<span class="today-block__done">✓</span>{% endif %}</h2>
+    {% if watch_card_item %}<span class="muted today-block__count">{% if watch_card_done_today %}done today{% else %}today{% endif %}</span>{% endif %}
+  </header>
+  {% if watch_card_item %}
+    {{ content_card(watch_card_item, progress_by_id.get(watch_card_item.id), done_today=watch_card_done_today) }}
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-state__msg">A short video or podcast paired with the day's reading. Curation in progress.</p>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if not exercise_is_up_next %}
+<section class="today-block">
+  <header class="today-block__head">
+    <h2 class="section-label">Practicing {% if exercise_card_done_today %}<span class="today-block__done">✓</span>{% endif %}</h2>
+    {% if exercise_card_item %}<span class="muted today-block__count">{% if exercise_card_done_today %}done today{% else %}today{% endif %}</span>{% else %}<span class="muted today-block__count">soon</span>{% endif %}
+  </header>
+  {% if exercise_card_item %}
+    {{ content_card(exercise_card_item, progress_by_id.get(exercise_card_item.id), done_today=exercise_card_done_today) }}
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-state__msg">Small guided exercises — apply the reading. Shorter than a compose problem; less ceremony than a warmup.</p>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% endif %}
+
+<details class="today-block"><summary>Other practice and writing</summary>
+<section class="today-block today-block--primary">
+  <header class="today-block__head">
+    <h2 class="section-label">Composing</h2>
+    <span class="muted today-block__count">{{ scored | length }} scheduled</span>
+  </header>
+  {% if scored %}
+    <div class="card-stack">
+      {% for s in scored %}
+        <div class="problem-card-wrap">
+          <a class="problem-card" href="/problem/{{ s.problem.slug }}">
+            <div class="problem-card__head">
+              <span class="badge badge--{{ s.problem.problem_type }}">{{ s.problem.problem_type.replace('_',' ') }}</span>
+              <span class="badge badge--time">{{ s.problem.time_bucket }} min</span>
+              <span class="badge badge--diff">{{ s.problem.difficulty }}</span>
+            </div>
+            <h3 class="problem-card__title">{{ s.problem.title }}</h3>
+            <div class="problem-card__tags">
+              {% for t in s.problem.domain_tags %}<span class="tag">{{ t }}</span>{% endfor %}
+            </div>
+            <details class="problem-card__why">
+              <summary>why surfaced</summary>
+              <ul>
+                {% for k, v in s.components.items() %}
+                  <li>{{ k.replace('_',' ') }}: {{ "%.2f" | format(v) }}</li>
+                {% endfor %}
+                <li><strong>total: {{ "%.2f" | format(s.score) }}</strong></li>
+              </ul>
+            </details>
+          </a>
+          <a class="problem-card__interview-link" href="/problem/{{ s.problem.slug }}?mode=interview">
+            try in interview mode →
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No core problems loaded.</p>
+  {% endif %}
+
+  {% if has_warmups %}
+    <p class="today-block__aside">
+      <a class="warmup-link" href="/warmup">+ warmup</a>
+      <span class="muted">opt-in · does not affect scheduling</span>
+    </p>
+  {% endif %}
+</section>
+
+<section class="today-block">
+  <header class="today-block__head">
+    <h2 class="section-label">Writing</h2>
+    {% if active_writing %}
+      <span class="muted today-block__count">in progress</span>
+    {% endif %}
+  </header>
+  {% if active_writing %}
+    <a class="content-card" href="/writings/{{ active_writing.id }}">
+      <div class="content-card__meta">
+        <span class="content-card__kind">draft</span>
+        <span class="content-card__duration">{{ active_writing.word_count }} words</span>
+      </div>
+      <h3 class="content-card__title">{{ active_writing.title or 'Untitled draft' }}</h3>
+      <div class="content-card__source">
+        <span>updated {{ active_writing.updated_at.strftime('%H:%M') }}</span>
+        {% for ref in active_writing.source_refs[:2] %}<span class="tag tag--axis">from {{ ref.kind }}</span>{% endfor %}
+      </div>
+    </a>
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-state__msg">
+        Turn the day's reading + reflections + a recent attempt into a short
+        sharable post (blog draft, forum comment, fellowship snippet).
+      </p>
+      <form method="post" action="/writings" style="margin-top: var(--space-3)">
+        <button type="submit" class="bordered-button">+ start a draft</button>
+      </form>
+    </div>
+  {% endif %}
+  <p class="today-block__aside">
+    <a class="action-link" href="/writings">all writings →</a>
+  </p>
+</section>
+
+{# "Done today" tray — what the user finished. Each row offers a
+   one-click un-complete that requeues the item back into the daily
+   slot. Hidden when nothing's been done yet to keep the page clean
+   on a fresh day. #}
+{% if done_today_items %}
+  <section class="today-block done-today">
+    <header class="today-block__head">
+      <h2 class="section-label">Done today · {{ done_today_items | length }}</h2>
+      <span class="muted today-block__count">tap "requeue" to reopen</span>
+    </header>
+    <ul class="done-today__list">
+      {% for item, pr in done_today_items %}
+        <li class="done-today__row">
+          <a class="done-today__title" href="/content/{{ item.slug }}">
+            <span class="done-today__check" aria-hidden="true">✓</span>
+            <span>{{ item.title }}</span>
+          </a>
+          <div class="done-today__meta">
+            <span class="badge">{{ item.kind }}</span>
+            {% if item.duration_min %}<span class="muted">{{ item.duration_min }} min</span>{% endif %}
+            {% if pr.checked_at %}<span class="muted">{{ pr.checked_at.strftime('%H:%M') }}</span>{% endif %}
+            {% if pr.rating_1_to_5 %}<span class="badge">{{ '★' * pr.rating_1_to_5 }}</span>{% endif %}
+            <form method="post" action="/content/{{ item.id }}/check?undo=1" class="done-today__undo-form">
+              <button type="submit" class="muted-button done-today__undo" title="Mark unread; this item will return to today's slot">requeue</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+</details>
+</div>{# /.home-layout__primary #}
+
+{# ── Right rail: dashboard glance.
+   Active initiatives, 7-day signal, weak axis. Each card is its
+   own section; cards stack vertically. On mobile the whole rail
+   slides under the primary column. #}
+<aside class="home-layout__rail" aria-label="Today dashboard">
+<details><summary>Progress and broader goals</summary>
+
+  {% if home_rail.initiatives %}
+    <section class="home-rail__card">
+      <h2 class="home-rail__heading">Active initiatives</h2>
+      <ul class="home-rail__list">
+        {% for init in home_rail.initiatives %}
+          <li class="home-rail__row">
+            <a class="home-rail__row-title" href="/decisions?initiative={{ init.slug }}">
+              {% if init.is_pinned %}<span aria-label="Pinned" title="Currently pinned">★</span> {% endif %}{{ init.title }}
+            </a>
+            <span class="home-rail__row-meta">
+              priority {{ init.priority }}
+              {% if init.target_relative %}
+                · <span class="home-rail__{{ init.target_urgency }}">{{ init.target_relative }}</span>
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="home-rail__streak"><a href="/focus" class="muted">see all in /focus →</a></p>
+    </section>
+  {% endif %}
+
+  {% if home_rail.signal %}
+    <section class="home-rail__card">
+      <h2 class="home-rail__heading">7-day signal</h2>
+      <div class="home-rail__stats">
+        <div class="home-rail__stat">
+          <span class="home-rail__stat-value">{{ home_rail.signal.attempts_7d }}</span>
+          <span class="home-rail__stat-label">attempts</span>
+        </div>
+        <div class="home-rail__stat">
+          <span class="home-rail__stat-value">{{ home_rail.signal.content_7d }}</span>
+          <span class="home-rail__stat-label">content done</span>
+        </div>
+        <div class="home-rail__stat">
+          <span class="home-rail__stat-value">{% if home_rail.signal.active_today %}✓{% else %}—{% endif %}</span>
+          <span class="home-rail__stat-label">today</span>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if home_rail.weak_axis %}
+    <section class="home-rail__card">
+      <h2 class="home-rail__heading">Weak axis</h2>
+      <div class="home-rail__weak">
+        <span class="home-rail__weak-axis">{{ home_rail.weak_axis.label }}</span>
+        <span class="home-rail__weak-score">{{ home_rail.weak_axis.score_pct }}%</span>
+        <p class="home-rail__weak-explain">
+          The scheduler biases today's picks toward this axis.
+          <a href="/aim" class="muted">see breakdown →</a>
+        </p>
+      </div>
+    </section>
+  {% endif %}
+
+</details>
+</aside>
+
+</div>{# /.home-layout #}
+
+{% endblock %}

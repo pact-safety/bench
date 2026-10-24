@@ -1,0 +1,212 @@
+/* extra.css — bind mkdocs-material's color/type tokens to the
+   portfolio palette (libearden.dev / static/css/tokens.css).
+ *
+ * mkdocs-material exposes a `--md-*` token set. We override those
+ * to point at the operator's shared tokens so the docs site reads
+ * as one piece with libearden.dev and bench.libearden.dev.
+ *
+ * NOTE: Variable values duplicated here from static/css/tokens.css
+ * because mkdocs serves its own static tree and can't `@import`
+ * across repos. If the canonical tokens change, mirror the values
+ * here too. Single source of truth lives at
+ * static/css/tokens.css in the bench repo.
+ */
+
+:root {
+  /* Portfolio tokens (mirror of static/css/tokens.css). */
+  --bg:        #0A0B0D;
+  --surface:   #131519;
+  --surface-2: #1A1D23;
+  --border:    #262A31;
+  --text:       #E7E9EC;
+  --text-muted: #8A909B;
+  --text-faint: #5A606B;
+  --accent:       #E8B339;
+  --accent-hover: #F2C65C;
+  --accent-dim:   #E8B33926;
+}
+
+/* ===== mkdocs-material slate (dark) scheme overrides ===================
+   We map md-* tokens to the portfolio values. The slate scheme is what
+   ships when prefers-color-scheme=dark or when the user toggle picks
+   dark. Bench is dark-only so we point both schemes at the same values
+   in case mkdocs decides to use the light scheme for any reason. */
+
+[data-md-color-scheme="slate"],
+[data-md-color-scheme="default"] {
+  /* Surface scale */
+  --md-default-bg-color:           var(--bg);
+  --md-default-bg-color--light:    var(--surface);
+  --md-default-bg-color--lighter:  var(--surface-2);
+  --md-default-bg-color--lightest: var(--surface-2);
+  --md-default-fg-color:           var(--text);
+  --md-default-fg-color--light:    var(--text-muted);
+  --md-default-fg-color--lighter:  var(--text-muted);
+  --md-default-fg-color--lightest: var(--text-faint);
+
+  /* Primary (used for header bar, focused inputs, primary nav background) */
+  --md-primary-fg-color:           var(--bg);
+  --md-primary-fg-color--light:    var(--surface);
+  --md-primary-fg-color--dark:     var(--bg);
+  --md-primary-bg-color:           var(--text);
+  --md-primary-bg-color--light:    var(--text-muted);
+
+  /* Accent (used for links, focused borders, hover states) */
+  --md-accent-fg-color:            var(--accent);
+  --md-accent-fg-color--transparent: var(--accent-dim);
+  --md-accent-bg-color:             var(--bg);
+  --md-accent-bg-color--light:      var(--surface);
+
+  /* Typeset (body text + headings + code) */
+  --md-typeset-color:              var(--text);
+  --md-typeset-a-color:             var(--accent);
+  --md-typeset-mark-color:          var(--accent-dim);
+  --md-typeset-del-color:           color-mix(in srgb, #f87171 60%, transparent);
+  --md-typeset-ins-color:           color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* Code blocks */
+  --md-code-bg-color:               var(--surface-2);
+  --md-code-fg-color:               var(--text);
+  --md-code-hl-color:               var(--accent-dim);
+  --md-code-hl-color--light:        var(--accent-dim);
+
+  /* Admonitions / details */
+  --md-admonition-bg-color:         var(--surface);
+  --md-admonition-fg-color:         var(--text);
+
+  /* Footer */
+  --md-footer-bg-color:             var(--bg);
+  --md-footer-bg-color--dark:       var(--bg);
+  --md-footer-fg-color:             var(--text);
+  --md-footer-fg-color--light:      var(--text-muted);
+  --md-footer-fg-color--lighter:    var(--text-faint);
+}
+
+/* Body */
+body {
+  background-color: var(--bg);
+}
+
+/* Site name in the header bar — make it accent-amber like the bench's
+   .brand. Matches the visual entry-point pattern across surfaces. */
+.md-header__title {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Section headers — adopt the bench's eyebrow→title pattern. mkdocs
+   renders h2/h3 directly, so we lean on h2 + a hand-styled eyebrow
+   class authors can opt into via `{ .eyebrow }` attribute lists. */
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2rem;
+}
+.md-typeset h2 + p,
+.md-typeset h3 + p { margin-top: 0.4rem; }
+
+/* Eyebrow opt-in — author writes `## EYEBROW { .eyebrow }` to render
+   as the portfolio motif (mono uppercase amber). */
+.md-typeset .eyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 500;
+  margin: 1.5rem 0 0;
+}
+
+/* Links inside body prose — amber, dotted underline by default,
+   solid amber on hover. Mirrors the bench's prose-anchor motif. */
+.md-typeset a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-dim);
+  text-underline-offset: 3px;
+}
+.md-typeset a:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+
+/* Code blocks — match the bench's --surface-2 for inline + block.
+   Slightly lifted from the page surface so code reads as its own
+   layer. */
+.md-typeset code {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.md-typeset pre > code {
+  padding: 0.85em 1em;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* Tables — quieter borders, monospace headers to match the tag motif. */
+.md-typeset table:not([class]) {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+}
+.md-typeset table:not([class]) th {
+  background-color: var(--surface-2);
+  color: var(--text);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+}
+.md-typeset table:not([class]) td {
+  border-top: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Admonitions — portfolio-quiet, amber accent for the title bar. */
+.md-typeset .admonition {
+  background-color: var(--surface);
+  border-left-color: var(--accent);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.md-typeset .admonition-title {
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+.md-typeset .admonition-title::before {
+  background-color: var(--accent);
+}
+
+/* Search box on hover/focus — amber border instead of mkdocs-material's
+   default. Matches the focus-ring story on the bench. */
+.md-search__input:focus,
+.md-search__input:hover {
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+
+/* Sidebar nav — keep clean, accent on hover/active. */
+.md-nav__link--active,
+.md-nav__link[aria-current="page"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.md-nav__link:hover { color: var(--accent-hover); }
+
+/* "Grid cards" markdown extension (the index.md uses these) — borders
+   match the bench's .focus-card spec. */
+.md-typeset .grid.cards > * {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+.md-typeset .grid.cards > *:hover {
+  border-color: var(--accent);
+}
+
+/* Reduce-motion respect — already inherits from mkdocs-material's
+   built-in, no override needed. */

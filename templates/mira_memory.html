@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block main_class %}container--narrow{% endblock %}
+{% block title %}Mira — memory{% endblock %}
+{% block body %}
+
+<article class="page page--mira">
+  <div class="mira-surface">
+    <div class="mira-surface__head">
+      <span class="mira-surface__crumb">Connect › Mira › Memory</span>
+      {% set mira_tab = 'memory' %}
+      {% include "_mira_tabs.html" %}
+    </div>
+
+    <div class="mira-surface__body">
+      <div class="mira-surface__title-row">
+        <h1 class="mira-surface__title">Working memory</h1>
+      </div>
+      <p class="mira-surface__sub">
+        Mira reads these on every turn. Superseded memories drop off the list.
+      </p>
+
+      {% if memories %}
+        {# 6b: group by category the way the design does — Mira reads these
+           on every turn, so the grouping mirrors how it reasons over them.
+           Real categories are the goal|fact|preference|context enum; the
+           design's "CAREER / TASTE" headers were seed data. #}
+        {% for category, mems in memories|groupby('category') %}
+          <div class="mira-group">{{ category|capitalize }}</div>
+          <ul class="mira-cardlist">
+            {% for mem in mems %}
+              <li class="mira-card">
+                <div class="mira-card__title" style="font-weight:500">{{ mem.content }}</div>
+                <div class="mira-card__foot">
+                  <span class="mira-card__meta">from {{ mem.created_at.strftime('%b %d, %Y') }}</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      {% else %}
+        <p class="mira-surface__sub">
+          Nothing remembered yet — Mira saves goals, facts, and preferences
+          here as you talk; you can add one directly too.
+        </p>
+      {% endif %}
+
+      <details class="mira-add">
+        <summary>+ Add a memory</summary>
+        <form method="post" action="/mira/memory">
+          <div class="form-field">
+            <label class="form-field__label" for="memory-content">Memory</label>
+            <textarea id="memory-content" name="content" rows="3" required
+                      placeholder="Something Mira should keep in mind"></textarea>
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="memory-category">Category</label>
+            <select id="memory-category" name="category">
+              {% for c in categories %}
+                <option value="{{ c }}" {% if c == 'fact' %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Save memory</button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </div>
+</article>
+
+{% endblock %}

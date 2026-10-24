@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.initiative }} — Journal — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--journal-entry">
+  <header class="page__head">
+    <p class="page__meta">
+      <a href="/decisions">← Journal</a>
+      &middot;
+      <a href="/decisions?initiative={{ entry.initiative }}">
+        all entries on {{ entry.initiative }}
+      </a>
+    </p>
+    <h1 class="page__title">
+      <span class="journal-entry__initiative">{{ entry.initiative }}</span>
+    </h1>
+    <p class="page__meta muted">
+      <time datetime="{{ entry.created_at.isoformat() }}">
+        {{ entry.created_at.strftime('%A, %Y-%m-%d %H:%M UTC') }}
+      </time>
+    </p>
+  </header>
+
+  {% if entry.decisions %}
+    <section class="page__section">
+      <h2 class="section-label">Decisions</h2>
+      <p>{{ entry.decisions }}</p>
+    </section>
+  {% endif %}
+
+  {% if entry.next_actions %}
+    <section class="page__section">
+      <h2 class="section-label">Next actions</h2>
+      <p>{{ entry.next_actions }}</p>
+    </section>
+  {% endif %}
+
+  {% if entry.chat_url %}
+    <section class="page__section">
+      <p>
+        <a href="{{ entry.chat_url }}" target="_blank" rel="noopener">
+          Open source chat ↗
+        </a>
+      </p>
+    </section>
+  {% endif %}
+
+  <footer class="page__section muted small">
+    <p>
+      Logged via the bench MCP server's <code>log_chat_outcome</code> tool.
+      Append-only — to amend, log a follow-up entry from a chat.
+    </p>
+  </footer>
+</article>
+
+{% endblock %}

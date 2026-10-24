@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Access requests — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--feedback">
+  <header class="page__head">
+    <h1 class="page__title">Access requests</h1>
+    <p class="page__meta">
+      Admin triage queue for invite requests. <strong>Grant</strong> adds the email to the
+      DB allowlist immediately — no deploy needed. <strong>Decline</strong> revokes any
+      existing grant for that email.
+    </p>
+    <p class="muted">
+      <strong>Pending:</strong> {{ counts["pending"] }} ·
+      <strong>Granted:</strong> {{ counts["granted"] }} ·
+      <strong>Declined:</strong> {{ counts["declined"] }}
+    </p>
+  </header>
+
+  <nav class="fb-tabs" aria-label="Access request status">
+    {% for s in tab_statuses %}
+      <a class="fb-tab {% if active_status == s %}is-active{% endif %}"
+         href="/admin/access-requests?status={{ s }}">
+        <span class="fb-tab__dot fb-tab__dot--{{ s }}" aria-hidden="true"></span>
+        <span class="fb-tab__label">{{ s }}</span>
+        <span class="fb-tab__count">{{ counts[s] }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <section class="page__section">
+    {% if items %}
+      <ul class="fb-list">
+        {% for req in items %}
+          <li class="fb-item fb-item--{{ req.status }}">
+            <header class="fb-item__head">
+              <span class="fb-item__id">#{{ req.id }}</span>
+              <span class="fb-item__status fb-item__status--{{ req.status }}">{{ req.status }}</span>
+              <span class="muted">{{ req.created_at.strftime("%Y-%m-%d %H:%M") if req.created_at else "unknown" }}</span>
+              <span class="tag">{{ req.name }}</span>
+            </header>
+
+            <p class="fb-item__body">
+              <strong>Email:</strong>
+              <code>{{ req.email }}</code>
+              <button type="button" class="muted-button" data-copy-email="{{ req.email }}">Copy email</button>
+            </p>
+
+            {% if req.github_handle %}
+              <p class="muted">GitHub: <code>{{ req.github_handle }}</code></p>
+            {% endif %}
+
+            {% if req.note %}
+              <p class="fb-item__body">{{ req.note }}</p>
+            {% endif %}
+
+            {% if req.processed_note %}
+              <p class="muted fb-item__notes-display">processed note: {{ req.processed_note }}</p>
+            {% endif %}
+
+            <p class="muted">
+              IP: <code>{{ req.ip or "—" }}</code>
+              · User-Agent: <code>{{ req.user_agent or "—" }}</code>
+            </p>
+
+            <footer class="fb-item__actions" style="align-items: flex-start; flex-wrap: wrap;">
+              <form method="post"
+                    action="/admin/access-requests/{{ req.id }}/status"
+                    style="display: inline-flex; flex-direction: column; gap: var(--space-2);">
+                <input type="hidden" name="status" value="granted">
+                <textarea name="processed_note" rows="2" class="fb-item__notes" placeholder="grant note (optional)"></textarea>
+                <button type="submit" class="muted-button">Grant</button>
+              </form>
+
+              <form method="post"
+                    action="/admin/access-requests/{{ req.id }}/status"
+                    style="display: inline-flex; flex-direction: column; gap: var(--space-2); margin-left: var(--space-3);">
+                <input type="hidden" name="status" value="declined">
+                <textarea name="processed_note" rows="2" class="fb-item__notes" placeholder="decline note (optional)"></textarea>
+                <button type="submit" class="muted-button">Decline</button>
+              </form>
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No items in <strong>{{ active_status }}</strong>.</p>
+    {% endif %}
+  </section>
+
+  <section class="page__section">
+    <h2 class="page__title">Active allowlist (DB)</h2>
+    <p class="muted">
+      Everyone below can sign in right now. Env-var entries
+      (<code>LIS_ALLOWED_*</code>) are a separate additive bootstrap list and
+      aren't shown here.
+    </p>
+
+    <form method="post" action="/admin/allowlist/add"
+          style="display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end;">
+      <label>
+        <span class="muted">Email</span>
+        <input type="email" name="email" required placeholder="person@example.com">
+      </label>
+      <label>
+        <span class="muted">Note (optional)</span>
+        <input type="text" name="note" placeholder="e.g. Mac demo cohort">
+      </label>
+      <button type="submit" class="muted-button">Add to allowlist</button>
+    </form>
+
+    {% if allowlist_items %}
+      <ul class="fb-list">
+        {% for entry in allowlist_items %}
+          <li class="fb-item">
+            <header class="fb-item__head">
+              <code>{{ entry.email }}</code>
+              <span class="muted">
+                added {{ entry.created_at.strftime("%Y-%m-%d") if entry.created_at else "—" }}
+                {% if entry.access_request_id %}· from request #{{ entry.access_request_id }}{% endif %}
+              </span>
+              {% if entry.note %}<span class="tag">{{ entry.note }}</span>{% endif %}
+              <form method="post" action="/admin/allowlist/revoke" style="margin-left: auto;">
+                <input type="hidden" name="email" value="{{ entry.email }}">
+                <button type="submit" class="muted-button">Revoke</button>
+              </form>
+            </header>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No DB allowlist entries yet.</p>
+    {% endif %}
+  </section>
+</article>
+
+<script>
+  (function () {
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    document.querySelectorAll("[data-copy-email]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        var email = btn.getAttribute("data-copy-email") || "";
+        if (!email) return;
+        var original = btn.textContent;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(email);
+          } else {
+            fallbackCopy(email);
+          }
+          btn.textContent = "Copied";
+        } catch (_) {
+          btn.textContent = "Copy failed";
+        }
+        setTimeout(function () { btn.textContent = original; }, 1200);
+      });
+    });
+  })();
+</script>
+
+{% endblock %}

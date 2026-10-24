@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Reset progress — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--settings-reset">
+  <header class="page__head">
+    <h1 class="page__title">Reset progress</h1>
+    <p class="page__meta">
+      Useful for testing the onboarding flow or starting over after a
+      stretch of test attempts. Removes practice/learning state.
+      <strong>Keeps</strong> JDs, writings, feedback, credentials —
+      anything you authored stays.
+    </p>
+  </header>
+
+  <section class="page__section reset__counts">
+    <h2 class="section-label">Will delete</h2>
+    {% if total_rows == 0 and not has_skipped_flag %}
+      <p class="muted">Your account already looks fresh. Nothing to clear.</p>
+    {% else %}
+      <ul class="reset__list">
+        {% for table, n in counts.items() %}
+          <li class="reset__row {% if n == 0 %}reset__row--empty{% endif %}">
+            <span class="reset__table">{{ table.replace('_',' ') }}</span>
+            <span class="reset__count">{{ n }}</span>
+          </li>
+        {% endfor %}
+        {% if has_skipped_flag %}
+          <li class="reset__row">
+            <span class="reset__table">onboarding-skipped flag</span>
+            <span class="reset__count">will clear</span>
+          </li>
+        {% endif %}
+      </ul>
+      <p class="muted reset__total">{{ total_rows }} rows total · the next visit to <code>/</code> will redirect to <code>/onboarding</code>.</p>
+    {% endif %}
+  </section>
+
+  <section class="page__section">
+    <h2 class="section-label">Will keep</h2>
+    <ul class="reset__keep">
+      <li>JDs you've pasted</li>
+      <li>Writings + drafts</li>
+      <li>Feedback inbox (your historical record)</li>
+      <li>Credential uploads</li>
+      <li>Your account itself (no need to re-sign-in)</li>
+    </ul>
+  </section>
+
+  <section class="page__section reset__actions">
+    <form method="post" action="/settings/reset" class="reset__form" id="reset-form">
+      <input type="hidden" name="confirm" value="yes">
+
+      {# Type-the-count confirmation. The big red button alone is too
+         easy to fat-finger; the user has to look at the actual row
+         count and type it to unlock submission. The expected token
+         is rendered inline so the user can't lose it. #}
+      <label class="reset__type-confirm">
+        <span>
+          Type <strong><code id="reset-token">{{ total_rows }}</code></strong>
+          (the total row count) to confirm. This can't be undone.
+        </span>
+        <input type="text" id="reset-token-input" name="typed_total" autocomplete="off"
+               placeholder="type the number"
+               aria-describedby="reset-token-help" {% if total_rows == 0 %}disabled{% endif %}>
+      </label>
+
+      <button type="submit" class="reset__confirm" id="reset-submit" disabled>
+        Yes, reset my progress
+      </button>
+      <a class="muted" href="/settings">cancel · back to settings</a>
+    </form>
+  </section>
+</article>
+
+<script>
+  // Type-the-count gate. Enables the destructive submit only when the
+  // user types the exact row count shown above. Disabled state is the
+  // default to make it impossible to single-click into a reset.
+  (function () {
+    var input = document.getElementById("reset-token-input");
+    var submit = document.getElementById("reset-submit");
+    var token = (document.getElementById("reset-token") || {}).textContent;
+    if (!input || !submit || !token) return;
+    token = token.trim();
+    function update() {
+      submit.disabled = input.value.trim() !== token;
+    }
+    input.addEventListener("input", update);
+    update();
+  })();
+</script>
+
+{% endblock %}

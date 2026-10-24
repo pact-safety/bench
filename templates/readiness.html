@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Illustrative practice scenario — Li's Bench{% endblock %}
+{% block main_class %}container--narrow{% endblock %}
+{% block body %}
+
+<article class="page page--readiness">
+  <header class="page__head">
+    <h1 class="page__title">Illustrative practice scenario</h1>
+    <p class="page__meta">
+      Compare your assessment snapshot with the axis weights inferred from your active JD.
+      The hours and weeks below use a fixed assumption, not a personalized prediction
+      of learning speed or interview readiness.
+    </p>
+  </header>
+
+  {% if assessment_coverage %}
+    <p class="page__meta">
+      Assessment from {{ assessment_coverage.assessed_at.strftime("%Y-%m-%d") }} ·
+      {{ assessment_coverage.measured_axes | length }} of {{ axis_labels | length }} axes assessed.
+      Practice attempts do not automatically update this snapshot.
+    </p>
+  {% endif %}
+
+  {% if primary.unknown_axes %}
+    <p class="muted">JD axes not assessed, excluded from this scenario:
+      {% for axis in primary.unknown_axes %}{{ axis.label }}{% if not loop.last %}, {% endif %}{% endfor %}.
+      Missing evidence is not a zero score; the assessed subset does not represent the whole role.
+    </p>
+  {% endif %}
+
+  {% if not primary.has_data %}
+    <section class="page__section">
+      <p class="empty-state">
+        {{ primary.note }}
+      </p>
+      <p>
+        {% if not has_assessment %}
+          <a class="primary-link" href="/onboarding">Take the assessment →</a>
+        {% elif not has_weighted_jd %}
+          {% if active_jd %}
+            <a class="primary-link" href="/aim/jd/{{ active_jd.id }}">Review the job description →</a>
+          {% else %}
+            <a class="primary-link" href="/aim#aim">Add a job description →</a>
+          {% endif %}
+        {% else %}
+          <a class="primary-link" href="/aim#stand">Review assessment coverage →</a>
+        {% endif %}
+      </p>
+    </section>
+  {% else %}
+
+    <section class="page__section readiness__hero">
+      <header class="readiness__hero-head">
+        <span class="muted readiness__hero-label">Assessment comparison for</span>
+        <h2 class="readiness__hero-jd">
+          <a href="/aim/jd/{{ active_jd.id }}">{{ active_jd.title | jd_title }}</a>{% if active_jd.org %} · <span class="muted">{{ active_jd.org }}</span>{% endif %}
+        </h2>
+      </header>
+      <div class="readiness__hero-stats">
+        <div class="readiness__hero-stat">
+          <span class="readiness__hero-num">{{ primary.readiness_pct_rounded }}%</span>
+          <span class="readiness__hero-num-label">match on assessed axes</span>
+        </div>
+        <div class="readiness__hero-stat">
+          <span class="readiness__hero-num">~{{ primary.total_hours_rounded }}</span>
+          <span class="readiness__hero-num-label">illustrative practice hours</span>
+        </div>
+      </div>
+      <div class="readiness__hero-bar" aria-hidden="true">
+        <div class="readiness__hero-bar-fill" style="width: {{ primary.readiness_pct_rounded }}%"></div>
+      </div>
+    </section>
+
+    {# Slider: hours/week → weeks-to-ready. The projection math runs
+       in JS so it's instant, but the same total_hours_needed value
+       feeds in from the server so the result is deterministic. #}
+    <section class="page__section readiness__slider-section">
+      <h3 class="section-label">Illustrative weekly schedule</h3>
+      <label for="readiness-slider">Hours per week of focused practice</label>
+      <div class="readiness__slider-row">
+        <input
+          type="range"
+          id="readiness-slider"
+          min="{{ primary.hours_per_week_min }}"
+          max="{{ primary.hours_per_week_max }}"
+          value="{{ primary.hours_per_week_default }}"
+          step="1"
+          class="readiness__slider"
+          aria-label="Hours per week of focused practice"
+        >
+        <div class="readiness__slider-readout" aria-live="polite" aria-atomic="true">
+          <strong id="readiness-slider-hours">{{ primary.hours_per_week_default }}</strong>
+          <span class="muted"> hrs / week</span>
+          <span class="readiness__slider-sep">→</span>
+          <strong id="readiness-slider-weeks">—</strong>
+          <span class="muted" id="readiness-slider-friendly">—</span>
+        </div>
+      </div>
+      <p class="muted readiness__slider-caveat">
+        This fixed assumption assigns {{ primary.hours_per_tenth_point | int }} practice hours
+        per 0.1 axis-score gap. It is not calibrated to your learning rate,
+        and logged attempts do not personalize it.
+      </p>
+    </section>
+
+    {% if primary.needs_work %}
+      <section class="page__section">
+        <h3 class="section-label">Gap, by axis</h3>
+        <p class="muted">Sorted by illustrative hours. The fill compares assessed scores with inferred JD weights.</p>
+        <ul class="readiness__gap-list">
+          {% for g in primary.needs_work %}
+            <li class="readiness__gap-row">
+              <div class="readiness__gap-head">
+                <span class="readiness__gap-label">{{ g.label }}</span>
+                <span class="readiness__gap-hours">~{{ g.hours_needed }} hrs</span>
+              </div>
+              <div class="readiness__gap-bar" aria-hidden="true">
+                <div class="readiness__gap-bar-fill" style="width: {{ g.fill_pct }}%"></div>
+                <div class="readiness__gap-bar-target" style="left: {{ (g.jd_weight * 100) | int }}%"></div>
+              </div>
+              <div class="readiness__gap-meta muted">
+                you: {{ g.user_score }} · JD weight {{ g.jd_weight }} · {{ g.match_pct }}% of target
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if primary.at_target %}
+      <section class="page__section">
+        <h3 class="section-label">At or above the inferred JD weight <span class="muted">({{ primary.at_target | length }})</span></h3>
+        <ul class="readiness__at-target">
+          {% for g in primary.at_target %}
+            <li>
+              <span class="readiness__at-target-label">{{ g.label }}</span>
+              <span class="muted">you: {{ g.user_score }} · JD weight {{ g.jd_weight }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if other_jds %}
+      <section class="page__section">
+        <h3 class="section-label">Other JDs you've added</h3>
+        <p class="muted">For comparison — sorted by match on assessed axes; coverage may differ by JD.</p>
+        <ul class="readiness__other-jds">
+          {% for j in other_jds %}
+            <li class="readiness__other-jd">
+              <a href="/aim/jd/{{ j.id }}">{{ j.title | jd_title }}{% if j.org %} · {{ j.org }}{% endif %}</a>
+              <span class="muted">{{ j.readiness_pct_rounded }}% on assessed axes · ~{{ j.total_hours_rounded }} illustrative hrs
+                {% if j.unknown_axes_count %}· {{ j.unknown_axes_count }} JD axes not assessed{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section class="page__section page__section--muted">
+      <h3 class="section-label">How this works</h3>
+      <p class="muted">
+        For each assessed axis the JD weights, we compare the assessment score
+        with the inferred JD weight and convert any gap to illustrative hours
+        using the fixed rate above. The slider divides those hours by a weekly
+        schedule. JD weights describe emphasis, not validated proficiency thresholds.
+      </p>
+      <p class="muted">
+        Unassessed axes and axes without a positive JD weight are excluded.
+        These numbers do not establish whether you are ready for an interview,
+        or how long it will take to learn the material. Retake the assessment
+        to record a new snapshot.
+      </p>
+    </section>
+
+  {% endif %}
+</article>
+
+{% if primary.has_data %}
+<script>
+  // Slider → weeks projection. The math matches readiness.weeks_to_ready
+  // server-side. Friendly-duration translation mirrors format_duration
+  // in app/services/readiness.py — kept simple here since JS can't
+  // import from there.
+  (function () {
+    var slider = document.getElementById("readiness-slider");
+    var hoursOut = document.getElementById("readiness-slider-hours");
+    var weeksOut = document.getElementById("readiness-slider-weeks");
+    var friendlyOut = document.getElementById("readiness-slider-friendly");
+    if (!slider) return;
+    var totalHours = {{ primary.total_hours_needed | round(0) }};
+
+    function friendlyDuration(weeks) {
+      if (weeks <= 0) return "no gap in this scenario";
+      if (weeks < 1) return "~1 week";
+      if (weeks < 8) return "weeks";  // matched in the strong
+      var months = weeks / 4.345;
+      if (months < 12) {
+        var m = Math.round(months * 2) / 2;
+        return "(~" + (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + " months)";
+      }
+      var years = months / 12;
+      var y = Math.round(years * 2) / 2;
+      return "(~" + (y % 1 === 0 ? y.toFixed(0) : y.toFixed(1)) + " years)";
+    }
+
+    function update() {
+      var h = parseFloat(slider.value);
+      hoursOut.textContent = h;
+      if (totalHours <= 0) {
+        weeksOut.textContent = "0";
+        friendlyOut.textContent = "(no gap on assessed axes)";
+        return;
+      }
+      var weeks = totalHours / h;
+      var rounded = weeks < 1 ? "<1" : Math.round(weeks);
+      weeksOut.textContent = rounded + " weeks";
+      friendlyOut.textContent = friendlyDuration(weeks);
+    }
+    slider.addEventListener("input", update);
+    update();
+  })();
+</script>
+{% endif %}
+
+{% endblock %}

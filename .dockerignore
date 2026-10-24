@@ -1,0 +1,39 @@
+# Mirror .gitignore for the build context. Anything not needed for the
+# runtime image stays out — speeds up `docker build` and shrinks layers.
+
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.egg-info
+.pytest_cache
+data
+target
+Cargo.lock
+.DS_Store
+
+# Local secrets — never bake into the image.
+.env
+.env.*
+!.env.example
+
+# Test surface — useless in production.
+tests
+
+# Docs site — served separately if at all.
+docs
+site
+mkdocs.yml
+
+# Editor + tooling
+.vscode
+.idea
+
+# Repo-level Markdown that doesn't help in the container.
+DESIGN_TOKENS.md
+EXPERIMENT_LOG.md
+MIGRATION_PROGRESS.md
+ROADMAP.md
+SETUP.md
+SPEC.md

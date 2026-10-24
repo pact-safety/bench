@@ -1,0 +1,99 @@
+name: Docker smoke
+
+# Build the production image on every PR + push to main, and verify
+# `app.main` imports cleanly inside it. Catches the entire class of
+# "passes pytest, breaks in prod" regression — exactly the failure
+# we hit in PR #37 when `config.toml` got left out of the runtime
+# stage's COPY and the deployed container crash-looped on boot.
+#
+# Why this is separate from test.yml:
+#   - test.yml runs Python directly in the runner's filesystem layout,
+#     where every file in the repo is reachable. The image is a
+#     different filesystem; that's what we're checking here.
+#   - This workflow is slower (~30s warm, ~3min cold) because it
+#     builds the full image. Keeping it separate means a code-only
+#     failure surfaces in test.yml within ~1s, while image regressions
+#     get caught here. Two independent green/red signals.
+#
+# Two smoke checks:
+#   1. `import app.main` — catches import-time crashes (missing
+#      file in the image, broken venv, unconfigured env).
+#   2. `TestClient(app).get('/__health')` returns 200 — catches
+#      request-handling regressions that import-time can't see.
+#
+# Cache via `type=gha` (GitHub Actions cache, ~10GB per repo) so
+# only the first build is slow.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      # Files that, if changed, could affect the image. Trying to
+      # avoid running this on doc-only PRs.
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - app/**
+      - config.toml
+      - migrations_pg/**
+      - templates/**
+      - static/**
+      - content/**
+      - .github/workflows/docker-smoke.yml
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up BuildKit
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build runtime image with GHA cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          push: false
+          tags: lis-bench-smoke:test
+          # GitHub Actions cache backend — free, ~10GB per repo,
+          # evicted LRU. First build is slow; subsequent runs are fast.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke 1 — app.main imports cleanly inside the image
+        # `LIS_NO_DB=1` makes db.connect() return the strict-sentinel
+        # connection (no real Postgres needed). `LIS_SKIP_STARTUP_LOAD=1`
+        # bypasses the problem/content loader that hits the DB at boot.
+        # Together: the same environment unit tests run in, but exercised
+        # against the image's actual filesystem layout.
+        run: |
+          docker run --rm \
+            -e LIS_NO_DB=1 \
+            -e LIS_SKIP_STARTUP_LOAD=1 \
+            lis-bench-smoke:test \
+            python -c "import app.main; print('app.main imports OK')"
+
+      - name: Smoke 2 — /__health returns 200 inside the image
+        # Goes one layer deeper: not just import, but full request
+        # handling. Would catch e.g. a middleware that 500s on its
+        # first invocation, or a route handler that imports something
+        # unreachable in the image.
+        run: |
+          docker run --rm \
+            -e LIS_NO_DB=1 \
+            -e LIS_SKIP_STARTUP_LOAD=1 \
+            lis-bench-smoke:test \
+            python -c "
+          from fastapi.testclient import TestClient
+          from app.main import app
+          r = TestClient(app).get('/__health')
+          assert r.status_code == 200, f'/__health returned {r.status_code}: {r.text!r}'
+          print('/__health returned 200 OK')
+          "

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Your starting profile — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="assess-result">
+  <header class="assess-result__head">
+    <h1>Your starting profile</h1>
+    <p class="muted">
+      Good — you've laid the first marker. This snapshot comes from your
+      assessment answers. It does not automatically update from practice
+      attempts; retake the assessment to record a new snapshot.
+    </p>
+  </header>
+
+  {% if assessment_coverage %}
+    <p class="muted">
+      Assessment from {{ assessment_coverage.assessed_at.strftime("%Y-%m-%d") }} ·
+      {{ assessment_coverage.measured_axes | length }} of {{ axis_labels | length }} axes assessed.
+      Chart groups average only assessed axes. Missing evidence is not a zero score.
+    </p>
+    {% if assessment_coverage.unknown_axes %}
+      <p class="muted">Not assessed:
+        {% for axis in assessment_coverage.unknown_axes %}{{ axis_labels[axis] }}{% if not loop.last %}, {% endif %}{% endfor %}.
+      </p>
+    {% endif %}
+  {% endif %}
+
+  <section>
+    {% include "_skill_chart.html" %}
+  </section>
+
+  {% if suggestion %}
+    <section class="assess-result__suggestion">
+      <h2>Suggested first problem</h2>
+      <p>
+        Suggested assessed focus:
+        <strong>{{ suggestion.axis_label }}</strong>.
+        Try this one to build a baseline:
+      </p>
+      <a class="problem-card" href="/problem/{{ suggestion.problem.slug }}">
+        <div class="problem-card__head">
+          <span class="badge badge--{{ suggestion.problem.problem_type }}">{{ suggestion.problem.problem_type.replace('_',' ') }}</span>
+          <span class="badge badge--time">{{ suggestion.problem.time_bucket }} min</span>
+          <span class="badge badge--diff">{{ suggestion.problem.difficulty }}</span>
+        </div>
+        <h3 class="problem-card__title">{{ suggestion.problem.title }}</h3>
+      </a>
+    </section>
+  {% endif %}
+
+  {% if recommended_mode_label %}
+    <section class="assess-result__suggestion">
+      <h2>Recommended daily mode · {{ recommended_mode_label }}</h2>
+      <p class="muted">
+        {% if recommended_mode == "remix" %}
+          Your assessed scores suggest
+          <strong>Remix</strong> — shuffled, interleaved review over the
+          same smart scoring. Better for retention than a fixed sequence
+          once material is familiar.
+        {% else %}
+          Your assessed scores suggest <strong>Path</strong> — a steady, deterministic
+          progression that keeps unfinished work at the front until it's
+          done. The right default while material is still new.
+        {% endif %}
+        Your existing mode choice is preserved. Choose a mode any time in <a href="/settings">settings</a>.
+      </p>
+    </section>
+  {% endif %}
+
+  <section class="assess-result__suggestion">
+    <h2>Optional · refine with credentials</h2>
+    <p class="muted">
+      Upload a CV or transcript to compare what your background
+      <em>implies</em> against this starting profile. Useful for "I
+      have the credential but I'm rusty" gaps.
+    </p>
+    <p><a class="muted" href="/aim#evidence">Add credentials →</a></p>
+  </section>
+
+  <section class="assess-result__continue">
+    <a class="primary-link" href="/assess/{{ run.id }}/complete">go to today's session</a>
+    <a class="muted" href="/settings">retake or adjust settings</a>
+  </section>
+</article>
+
+{% endblock %}

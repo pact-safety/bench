@@ -1,0 +1,159 @@
+{% if is_available and row.is_future %}
+  <p class="status-message"><strong>Locked — complete the prerequisites first.</strong></p>
+  <ul>{% for idx, title in row.missing_prerequisites %}<li><a href="/tracks/{{ track.slug }}/sections/{{ idx }}">{{ title }}</a></li>{% endfor %}</ul>
+  <p>A confidence rating does not test you out of a prerequisite. {% if row.exam_url %}This section has a human-reviewed assessment pilot below.{% else %}A section-specific exam is required for an exemption; test-out is not available for this section.{% endif %}</p>
+{% elif is_available %}
+  {% if row.section.notes %}<p>{{ row.section.notes }}</p>{% endif %}
+  <p><strong>Learning target:</strong> {{ row.checkpoint_text }}</p>
+  {% if row.prep_items %}
+    <h3>Prepare</h3>
+    <ul>{% for item in row.prep_items %}<li><a href="/content/{{ item.slug }}">{{ item.title }}</a>{% if item.duration_min %} · {{ item.duration_min }} min{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  <h3>Read or practice</h3>
+  {% if row.content_url %}<p><a class="bordered-button" href="{{ row.content_url }}">Open {{ row.section.title }}</a></p>{% endif %}
+  {% if row.section.duration_min %}<p class="muted">Full section estimate: {{ row.section.duration_min }} minutes. You can save a stopping point and continue later.</p>{% endif %}
+  {% if row.resources %}<details><summary>Supplemental resources</summary><ul>{% for resource in row.resources %}<li><a href="{{ resource.url }}">{{ resource.title }}</a> <span class="badge">{{ resource.kind }}</span></li>{% endfor %}</ul></details>{% endif %}
+{% endif %}
+
+{% if is_available and row.exemption %}<p role="status">Tested out through a reviewed section assessment. This exemption is separate from practice completion.</p>
+{% elif is_available and row.exam_url %}<p><a href="{{ row.exam_url }}">Request a section assessment</a> · human-reviewed pilot, written or oral</p>{% endif %}
+{% if is_available and is_active and row.is_unlocked and not row.is_completed and not row.exemption %}
+  <p><a href="/mira?track={{ track.slug }}&amp;section={{ row.idx }}">Think through this section with Mira →</a></p>
+  <div class="page__section">
+    <form method="post" action="/tracks/{{ track.slug }}/sections/{{ row.idx }}/focus">
+      <button type="submit" class="bordered-button">Work on this next</button>
+    </form>
+    <details{% if row.session %} open{% endif %}>
+      <summary>Save a stopping point</summary>
+      <p class="muted">Keep your notebook cell, page, or next small step here. Saving a session does not complete the section.</p>
+      <form id="track-session-{{ row.idx }}" method="post" action="/tracks/{{ track.slug }}/sections/{{ row.idx }}/session">
+        <div class="form-field">
+          <label for="stopping-point-{{ row.idx }}">Where did you stop?</label>
+          <textarea id="stopping-point-{{ row.idx }}" name="stopping_point" rows="3" maxlength="2000" data-autosave data-autosave-persisted>{{ row.session.get('stopping_point', '') }}</textarea>
+        </div>
+        <div class="form-field">
+          <label for="session-artifact-{{ row.idx }}">Your notebook or work link (optional)</label>
+          <input id="session-artifact-{{ row.idx }}" name="artifact_url" type="url" maxlength="2048" data-autosave data-autosave-persisted value="{{ row.session.get('artifact_url', '') }}">
+        </div>
+        <div class="form-field">
+          <label for="next-action-{{ row.idx }}">Next small step</label>
+          <textarea id="next-action-{{ row.idx }}" name="next_action" rows="2" maxlength="500" data-autosave data-autosave-persisted>{{ row.session.get('next_action', '') }}</textarea>
+        </div>
+        <div class="form-actions"><button type="submit" class="bordered-button">Save stopping point</button></div>
+      </form>
+      {% if row.session.get('updated_at') %}<p class="muted">Saved {{ row.session.updated_at }}</p>{% endif %}
+      {% if row.session.get('artifact_url') %}<a href="{{ row.session.artifact_url }}" target="_blank" rel="noopener">Resume your saved work</a>{% endif %}
+    </details>
+  </div>
+  {% if row.gate %}
+    {# BEN-143's "prove it cold" list, now GATING rather than
+       merely offered. The understanding check below is warm —
+       you just read the material and self-assess, which is
+       exactly what tabbing through a Colab lets you fake. #}
+    <div class="page__section">
+      <p class="muted">
+        <strong>Prove it cold</strong> — no notebook, no autocomplete
+        <span class="badge badge--time">{{ row.gate.passed_count }}/{{ row.gate.total }} passing</span>
+      </p>
+      <ul>
+        {% for item in row.gate['items'] %}
+          <li>
+            {% if not item.unavailable %}<a href="/problem/{{ item.slug }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}
+            {% if item.unavailable %}<span role="status">Assessment unavailable — retry later</span>{% elif item.passed %}
+              <span class="tag">passed</span>
+            {% else %}
+              <span class="muted">· not yet green</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      {% if not row.gate.passed %}
+        <p class="muted">This checkpoint unlocks when all of these pass their tests.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+  {% if row.checkpoint_questions %}
+    <div class="page__section">
+      <h3 data-resource-reflection tabindex="-1">Explain from memory</h3>
+      <ol>
+        {% for question in row.checkpoint_questions %}
+          <li>{{ question }}</li>
+        {% endfor %}
+      </ol>
+      <p class="muted">Close the source and answer these content questions. Save your explanation, then decide whether to continue or revisit the material. This is a practice check, not a scored test-out exam.</p>
+      <form id="track-feedback-{{ row.idx }}" method="post" action="/tracks/{{ track.slug }}/sections/{{ row.idx }}/feedback">
+        <input type="hidden" name="check_version" value="{{ row.check_version }}">
+        <div class="form-field">
+          <label for="checkpoint-answers-{{ row.idx }}">Your explanation and answers</label>
+          <textarea id="checkpoint-answers-{{ row.idx }}" name="answers" rows="5" maxlength="6000" required data-autosave data-autosave-persisted data-voice-note data-voice-note-append data-voice-note-label="Dictate practice answers">{{ row.response.get('answers', '') }}</textarea>
+        </div>
+        <p class="form-field__hint">Optional dictation appends to your text. Review the transcript before saving. Typing remains available; dictation does not grant an exemption.</p>
+        <div class="form-field">
+          <label for="checkpoint-confidence-{{ row.idx }}">How clear is your understanding?</label>
+          <select id="checkpoint-confidence-{{ row.idx }}" name="confidence" required>
+            <option value=""{% if not row.response.get('confidence') %} selected{% endif %}>Choose your confidence</option>
+            {% for value, label in [('clear', 'Clear — I can explain and demonstrate it'), ('uncertain', 'Uncertain — I need another check'), ('stuck', 'Stuck — I need a smaller step')] %}
+              <option value="{{ value }}"{% if row.response.get('confidence') == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="checkpoint-artifact-{{ row.idx }}">Supporting work link (optional)</label>
+          <input id="checkpoint-artifact-{{ row.idx }}" name="artifact_url" type="url" maxlength="2048" data-autosave data-autosave-persisted value="{{ row.response.get('artifact_url', '') }}">
+          <p class="form-field__hint">Saved for your reference. Bench does not fetch this link.</p>
+        </div>
+        <div class="form-actions"><button type="submit" class="bordered-button">Save answers</button></div>
+      </form>
+      {% if row.response and row.response.get('confidence') != 'clear' %}
+        <p role="status">This section is unfinished. Use the next step below, then revise your explanation when ready.</p>
+      {% endif %}
+      {% if row.gate and not row.gate.passed %}
+        <p class="muted">
+          Blocked — {{ row.gate['remaining'] | length }} cold problem{{ '' if row.gate['remaining'] | length == 1 else 's' }} still to pass.
+        </p>
+      {% elif row.response.get('answers') and row.response.get('confidence') == 'clear' %}
+        <form method="post" action="/tracks/{{ track.slug }}/sections/{{ row.idx }}/complete">
+          <input type="hidden" name="checkpoint_pass" value="1" />
+          <button type="submit" class="bordered-button">Complete practice check</button>
+        </form>
+      {% endif %}
+    </div>
+  {% else %}
+    <form method="post" action="/tracks/{{ track.slug }}/sections/{{ row.idx }}/complete">
+      <button type="submit" class="bordered-button">Start understanding check</button>
+    </form>
+  {% endif %}
+{% endif %}
+{% if row.session and not (is_available and is_active and row.is_unlocked and not row.is_completed and not row.exemption) %}
+  <section class="page__section">
+    <h3>Your saved stopping point</h3>
+    <p class="saved-prose">{{ row.session.get('stopping_point', '') }}</p>
+    {% if row.session.get('next_action') %}<p class="saved-prose"><strong>Next small step:</strong> {{ row.session.next_action }}</p>{% endif %}
+    {% if row.session.get('artifact_url') %}<p><a href="{{ row.session.artifact_url }}" target="_blank" rel="noopener">Your saved work</a></p>{% endif %}
+    {% if row.session.get('updated_at') %}<p class="muted">Saved {{ row.session.updated_at }}</p>{% endif %}
+  </section>
+{% endif %}
+{% if row.stale_response %}
+  <details><summary>Your previous check and answer (preserved)</summary>
+    <p>The questions have changed. Your earlier work remains saved here.</p>
+    <p class="saved-prose">{{ row.stale_response.get('answers', '') }}</p>
+    {% for old in row.stale_response.get('previous_checks', []) %}<details><summary>Earlier check response</summary><p class="saved-prose">{{ old.get('answers', '') }}</p></details>{% endfor %}
+    {% if row.stale_response.get('artifact_url') %}<p><a href="{{ row.stale_response.artifact_url }}" target="_blank" rel="noopener">Previous supporting work</a></p>{% endif %}
+  </details>
+{% endif %}
+{% if row.response %}
+  <div class="page__section" role="status">
+    <h3>Your saved checkpoint response</h3>
+    <p class="saved-prose">{{ row.response.get('answers', '') }}</p>
+    {% for old in row.response.get("previous_checks", []) %}<details><summary>Previous check response</summary><p class="saved-prose">{{ old.get("answers", "") }}</p></details>{% endfor %}
+    <p class="muted">Self-assessed confidence: {{ row.response.get('confidence', '') }} · saved {{ row.response.get('updated_at', '') }}</p>
+    {% if row.response.get('artifact_url') %}<a href="{{ row.response.artifact_url }}" target="_blank" rel="noopener">Supporting work</a>{% endif %}
+    {% set feedback = row.response.get('feedback') or {} %}
+    {% if feedback %}
+      <h4>{% if feedback.get('source') == 'ai' %}AI feedback{% else %}Self-review guidance{% endif %}</h4>
+      <p>{{ feedback.get('summary', '') }}</p>
+      <p><strong>Next step:</strong> {{ feedback.get('next_action', '') }}</p>
+      {% if feedback.get('questions') %}<ul>{% for question in feedback.questions %}<li>{{ question }}</li>{% endfor %}</ul>{% endif %}
+    {% endif %}
+  </div>
+{% endif %}

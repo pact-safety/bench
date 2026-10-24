@@ -1,0 +1,202 @@
+# ARENA 3.0 ingestion manifest
+#
+# Declares the prereq DAG within each chapter. Cross-chapter ordering is
+# implicit by chapter order (Chapter 1 always follows Chapter 0).
+#
+# Run: python scripts/ingest_track_source.py \
+#        --manifest content/tracks/manifests/arena_3.yaml \
+#        --dry-run
+#
+# The output matches the existing hand-authored content/tracks/arena_3.md
+# in shape and field values (modulo prereq declarations which the hand-
+# authored file lacks). Replacement of the hand-authored file with the
+# ingested one is BEN-91's job; BEN-87 just demonstrates the tool works.
+
+source:
+  kind: github_notebooks
+  repo_url: https://github.com/callummcdougall/ARENA_3.0
+
+track:
+  slug: arena_3
+  title: "ARENA 3.0"
+  description: "Callum McDougall's ARENA 3.0 curriculum, focused on fundamentals and transformer interpretability."
+
+chapters:
+  - title: "Chapter 0 — Fundamentals"
+    nodes:
+      - id: "0.0"
+        title: "0.0 Prerequisites"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.0]_Prerequisites"
+        kind: external_reading
+        duration_min: 120
+        domain_tags: [python, pytorch, prerequisites, tensor manipulation]
+        axes: [algorithmic]
+        prereqs: []
+
+      - id: "0.1"
+        title: "0.1 Ray Tracing"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.1]_Ray_Tracing"
+        kind: external_exercise
+        duration_min: 300
+        domain_tags: [ray tracing, linear algebra, tensor manipulation]
+        axes: [algorithmic, transformer_internals]
+        prereqs: ["0.0"]
+
+      - id: "0.2"
+        title: "0.2 CNNs & ResNets"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.2]_CNNs_&_ResNets"
+        kind: external_exercise
+        duration_min: 420
+        domain_tags: [cnn, resnet, computer vision, training]
+        axes: [transformer_internals]
+        prereqs: ["0.1"]
+
+      - id: "0.3"
+        title: "0.3 Optimization"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.3]_Optimization"
+        kind: external_exercise
+        duration_min: 360
+        domain_tags: [optimizer, gradient, learning rate, training]
+        axes: [training_mechanics]
+        prereqs: ["0.1"]
+
+      - id: "0.4"
+        title: "0.4 Backpropagation"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.4]_Backprop"
+        kind: external_exercise
+        duration_min: 420
+        domain_tags: [backpropagation, autograd, gradient, computational graph]
+        axes: [training_mechanics, transformer_internals]
+        prereqs: ["0.3"]
+
+      - id: "0.5"
+        title: "0.5 VAEs & GANs"
+        url: "https://arena-chapter0-fundamentals.streamlit.app/[0.5]_VAEs_&_GANs"
+        kind: external_exercise
+        duration_min: 360
+        domain_tags: [vae, gan, generative modeling, training]
+        axes: [training_mechanics]
+        prereqs: ["0.4"]
+
+  - title: "Chapter 1 — Transformer Interpretability"
+    nodes:
+      # Foundation: from-scratch transformer + mech-interp setup.
+      - id: "1.1"
+        title: "1.1 Transformers from Scratch"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.1]_Transformer_from_Scratch"
+        kind: external_exercise
+        duration_min: 300
+        domain_tags: [transformer, attention, tokenization]
+        axes: [transformer_internals]
+        prereqs: []  # Chapter 0 completion is implicit by chapter ordering
+
+      - id: "1.2"
+        title: "1.2 Intro to Mech Interp"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.2]_Intro_to_Mech_Interp"
+        kind: external_exercise
+        duration_min: 240
+        domain_tags: [interpretability, transformerlens, attention patterns]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.1"]
+
+      # 1.3.x branch: probes, steering, SAEs, oracles. Each starts from 1.2.
+      - id: "1.3.1"
+        title: "1.3.1 Linear Probes"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.3.1]_Linear_Probes"
+        kind: external_exercise
+        duration_min: 210
+        domain_tags: [linear probes, representations, deception]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.2"]
+
+      - id: "1.3.2"
+        title: "1.3.2 Function Vectors & Model Steering"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.3.2]_Function_Vectors_&_Model_Steering"
+        kind: external_exercise
+        duration_min: 360
+        domain_tags: [function vectors, model steering, interventions]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.3.1"]
+
+      - id: "1.3.3"
+        title: "1.3.3 Interpretability with SAEs"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.3.3]_Interpretability_with_SAEs"
+        kind: external_exercise
+        duration_min: 420
+        domain_tags: [sae, sparse autoencoder, interpretability]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.3.1"]
+
+      - id: "1.3.4"
+        title: "1.3.4 Activation Oracles"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.3.4]_Activation_Oracles"
+        kind: external_exercise
+        duration_min: 240
+        domain_tags: [activation oracles, probing, representations]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.3.1"]
+
+      # 1.4.x branch: IOI and SAE circuits. 1.4.2 builds on SAE intro (1.3.3).
+      - id: "1.4.1"
+        title: "1.4.1 Indirect Object Identification"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.4.1]_Indirect_Object_Identification"
+        kind: external_exercise
+        duration_min: 240
+        domain_tags: [ioi, circuits, attention]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.2"]
+
+      - id: "1.4.2"
+        title: "1.4.2 SAE Circuits"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.4.2]_SAE_Circuits"
+        kind: external_exercise
+        duration_min: 300
+        domain_tags: [sae, circuits, feature tracing]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.3.3", "1.4.1"]
+
+      # 1.5.x branch: toy models, mostly independent of each other given 1.2.
+      - id: "1.5.1"
+        title: "1.5.1 Balanced Bracket Classifier"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.5.1]_Balanced_Bracket_Classifier"
+        kind: external_exercise
+        duration_min: 180
+        domain_tags: [toy models, algorithmic, circuits]
+        axes: [mechanistic_interpretability, algorithmic]
+        prereqs: ["1.2"]
+
+      - id: "1.5.2"
+        title: "1.5.2 Grokking & Modular Arithmetic"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.5.2]_Grokking_&_Modular_Arithmetic"
+        kind: external_exercise
+        duration_min: 180
+        domain_tags: [grokking, modular arithmetic, toy models]
+        axes: [mechanistic_interpretability, algorithmic]
+        prereqs: ["1.2"]
+
+      - id: "1.5.3"
+        title: "1.5.3 OthelloGPT"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.5.3]_OthelloGPT"
+        kind: external_exercise
+        duration_min: 180
+        domain_tags: [othellogpt, world representations, toy models]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.2"]
+
+      - id: "1.5.4"
+        title: "1.5.4 Toy Models of Superposition & SAEs"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.5.4]_Toy_Models_of_Superposition_&_SAEs"
+        kind: external_exercise
+        duration_min: 240
+        domain_tags: [superposition, sae, toy models]
+        axes: [mechanistic_interpretability]
+        prereqs: ["1.3.3"]
+
+      - id: "1.5.X"
+        title: "1.5.X Monthly Algorithmic Problems"
+        url: "https://arena-chapter1-transformer-interp.streamlit.app/[1.5.X]_Monthly_Algorithmic_Problems"
+        kind: external_exercise
+        duration_min: 120
+        domain_tags: [algorithmic, challenge problems, toy models]
+        axes: [mechanistic_interpretability, algorithmic]
+        prereqs: ["1.2"]

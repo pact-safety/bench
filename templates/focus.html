@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Focus — Li's Bench{% endblock %}
+{% block body %}
+
+{# Collapsible-sections layout (WS2 grammar pass, 2026-05-28).
+
+   Each initiative status is its own <details> section: Active expanded
+   by default; Dormant + Closed + Unassigned collapsed by default.
+   Native HTML disclosure — no JS, no animation library. Rows are
+   compact (title + priority + target_date + a single "recent activity
+   last 7d" indicator); the per-initiative detail (bench activity,
+   linear, open PRs, last decided) is reachable via the title link to
+   /decisions?initiative=<slug>. #}
+
+<article class="page page--focus">
+  <header class="page__head">
+    <h1 class="page__title">Focus</h1>
+    <p class="page__meta">
+      What you're working on, grouped by initiative status. The bench
+      activity counts cover the last 7 days; open-PR data joins on each
+      initiative's linked GitHub repos.
+      <span class="muted">Generated {{ view.generated_at.strftime("%Y-%m-%d %H:%M UTC") }}.</span>
+    </p>
+  </header>
+
+  {% macro focus_row(row) %}
+    {% set init = row.initiative %}
+    <li class="focus-row focus-row--{{ row.bucket }}{% if init.slug == view.active_initiative_slug %} focus-row--pinned{% endif %}"
+        data-initiative-slug="{{ init.slug }}">
+      <div class="focus-row__head">
+        <a class="focus-row__title" href="/decisions?initiative={{ init.slug }}">
+          {{ init.title }}
+          {% if init.slug == view.active_initiative_slug %}
+            <span class="focus-row__pin" title="Currently pinned initiative" aria-label="Pinned">★</span>
+          {% endif %}
+        </a>
+        <div class="focus-row__meta">
+          <span class="tag">priority {{ init.priority }}</span>
+          {% if init.target_date %}
+            <span class="focus-row__target focus-row__target--{{ row.target_urgency }}"
+                  title="Target {{ init.target_date }}">
+              {{ row.target_relative }}
+            </span>
+          {% endif %}
+          <span class="focus-row__signal"
+                title="{{ row.activity.attempts_last_7d }} attempts · {{ row.activity.reflections_last_7d }} reflections · {{ row.activity.content_completed_last_7d }} content (last 7d)">
+            {{ row.recent_activity_total }}
+            <span class="muted">/ 7d</span>
+          </span>
+        </div>
+      </div>
+      {% if row.last_decision %}
+        <p class="focus-row__decision">
+          <span class="muted">last decided</span>
+          <a href="/decisions/{{ row.last_decision.entry_id }}">{{ row.last_decision.decisions_excerpt }}</a>
+          <time class="muted" datetime="{{ row.last_decision.created_at.isoformat() }}">
+            {{ row.last_decision.created_at.strftime('%Y-%m-%d') }}
+          </time>
+        </p>
+      {% endif %}
+      {% if row.pr_fetch_state == "ok" and row.open_prs %}
+        <ul class="focus-row__prs">
+          {% for pr in row.open_prs %}
+            <li class="focus-row__pr">
+              <a href="{{ pr.url }}" target="_blank" rel="noopener">
+                <code>{{ pr.repo }}#{{ pr.number }}</code>
+                {% if pr.is_draft %}<span class="muted">[draft]</span>{% endif %}
+              </a>
+              <span class="muted">{{ pr.title }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endmacro %}
+
+  {# Active — expanded by default. Always renders, even if empty, so
+     the operator gets the zero-state nudge to add an initiative. #}
+  <details class="focus-section focus-section--active" open>
+    <summary class="focus-section__summary">
+      <span class="focus-section__dot focus-section__dot--active" aria-hidden="true"></span>
+      <span class="focus-section__label">Active</span>
+      <span class="focus-section__count">{{ view.active_rows | length }}</span>
+    </summary>
+    {% if view.active_rows %}
+      <ul class="focus-list">
+        {% for row in view.active_rows %}
+          {{ focus_row(row) }}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted focus-section__empty">
+        No active initiatives. Add a markdown file under
+        <code>content/initiatives/</code> with <code>status: active</code>
+        to surface a row here.
+      </p>
+    {% endif %}
+  </details>
+
+  {# Dormant — paused but not done. Collapsed by default; only renders
+     the section if there's content (no zero-state row for empty
+     dormant, since "no paused work" isn't a thing the operator needs
+     to be nudged about). #}
+  {% if view.dormant_rows %}
+    <details class="focus-section focus-section--dormant">
+      <summary class="focus-section__summary">
+        <span class="focus-section__dot focus-section__dot--dormant" aria-hidden="true"></span>
+        <span class="focus-section__label">Dormant</span>
+        <span class="focus-section__count">{{ view.dormant_rows | length }}</span>
+      </summary>
+      <ul class="focus-list">
+        {% for row in view.dormant_rows %}
+          {{ focus_row(row) }}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+
+  {# Closed — done + archived. Collapsed by default. Audit trail; same
+     skip-if-empty rule. #}
+  {% if view.closed_rows %}
+    <details class="focus-section focus-section--closed">
+      <summary class="focus-section__summary">
+        <span class="focus-section__dot focus-section__dot--closed" aria-hidden="true"></span>
+        <span class="focus-section__label">Closed</span>
+        <span class="focus-section__count">{{ view.closed_rows | length }}</span>
+      </summary>
+      <ul class="focus-list">
+        {% for row in view.closed_rows %}
+          {{ focus_row(row) }}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+
+  {# Unassigned — bench activity whose initiative_slug is NULL OR
+     pointing at a now-closed initiative. Always its own section
+     when there's content; collapsed by default. Drops the old
+     ?show_unassigned=1 toggle since the operator doesn't have to
+     opt in twice. #}
+  {% if view.unassigned_total > 0 %}
+    <details class="focus-section focus-section--unassigned">
+      <summary class="focus-section__summary">
+        <span class="focus-section__dot focus-section__dot--unassigned" aria-hidden="true"></span>
+        <span class="focus-section__label">Unassigned</span>
+        <span class="focus-section__count">{{ view.unassigned_total }}</span>
+        <span class="muted focus-section__hint">activity without an active initiative</span>
+      </summary>
+      {% set u = view.unassigned_activity %}
+      <ul class="focus-list">
+        <li class="focus-row focus-row--unassigned">
+          <div class="focus-row__head">
+            <span class="focus-row__title">Pre-tagging activity + closed-initiative tags</span>
+            <div class="focus-row__meta">
+              <span class="focus-row__signal">
+                {{ u.attempts_last_7d }} att · {{ u.reflections_last_7d }} refl · {{ u.content_completed_last_7d }} content
+              </span>
+            </div>
+          </div>
+          {% if u.last_attempt_at %}
+            <p class="focus-row__decision">
+              <span class="muted">last attempt</span>
+              <time class="muted">{{ u.last_attempt_at.strftime("%Y-%m-%d %H:%M") }}</time>
+            </p>
+          {% endif %}
+        </li>
+      </ul>
+      <p class="muted focus-section__empty">
+        Pre-tagging activity (before 2026-05-27) plus rows tagged to an
+        initiative that's since been closed. Set an active initiative
+        in /settings to start tagging new activity.
+      </p>
+    </details>
+  {% endif %}
+
+  {% if view.integration_notes %}
+    <section class="page__section" style="margin-top: var(--space-7);">
+      <h2 class="section-label">Integration status</h2>
+      <ul class="focus-integrations muted">
+        {% for note in view.integration_notes %}
+          <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

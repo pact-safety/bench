@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ w.title or 'Draft' }} — Writing{% endblock %}
+{% block body %}
+
+<article class="page page--writing">
+  <header class="page__head">
+    <p class="page__meta"><a class="action-link" href="/writings">← all writings</a></p>
+    <div class="writing__head-meta">
+      <span class="badge">{{ w.status }}</span>
+      <span class="muted">{{ w.word_count }} words · updated {{ w.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+  </header>
+
+  <form id="writing-form" method="post" action="/writings/{{ w.id }}/save" class="writing__form">
+    <input type="hidden" name="editor_snapshot" value="1">
+    <label class="writing__title-field">
+      <span class="muted">Title</span>
+      <input type="text" name="title" data-autosave data-autosave-persisted value="{{ w.title }}" maxlength="200" placeholder="What's this draft about?">
+    </label>
+    <label for="writing-body">Draft</label>
+    <textarea id="writing-body" name="body_md" rows="22" placeholder="Markdown. Take your time." spellcheck="true" data-autosave data-autosave-persisted>{{ w.body_md }}</textarea>
+    <div class="writing__form-actions">
+      <button type="submit" class="primary">Save draft</button>
+      <a class="muted" href="/today/next">Next →</a>
+      <span class="autosave-status muted" data-autosave-status="body_md" aria-live="polite"></span>
+      {% if w.status == 'draft' %}
+        <button type="submit" formaction="/writings/{{ w.id }}/status" name="status" value="published" class="bordered-button">Mark published →</button>
+      {% elif w.status == 'published' %}
+        <button type="submit" formaction="/writings/{{ w.id }}/status" name="status" value="draft" class="muted-button">Back to draft</button>
+      {% endif %}
+      {% if w.status != 'archived' %}
+        <button type="submit" formaction="/writings/{{ w.id }}/status" name="status" value="archived" class="muted-button">Archive</button>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if source_refs %}
+    <section class="page__section writing__sources">
+      <h2 class="section-label">Seeded from</h2>
+      <ul class="writing__source-list">
+        {% for ref in source_refs %}
+          <li>
+            <span class="badge">{{ ref.kind }}</span>
+            {% if ref.kind == 'reading' and ref.slug %}
+              <a class="action-link" href="/content/{{ ref.slug }}">{{ ref.title }}</a>
+            {% elif ref.kind == 'attempt' %}
+              <a class="action-link" href="/attempt/{{ ref.id }}/review">{{ ref.title }}</a>
+            {% else %}
+              <span>{{ ref.title }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if w.body_md %}
+    <section class="page__section">
+      <h2 class="section-label">Preview</h2>
+      <div class="md writing__preview">{{ w.body_md | markdown }}</div>
+    </section>
+  {% endif %}
+</article>
+
+{% endblock %}

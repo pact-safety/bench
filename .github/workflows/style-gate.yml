@@ -1,0 +1,31 @@
+name: style-gate
+
+# ADVISORY, NOT BLOCKING — on purpose, for now.
+#
+# The gate finds 109 violations in the CSS as it stands today (mostly legacy
+# shadow aliases and hex literals that predate docs/STYLEGUIDE.md). Landing it
+# as a required check would red every UI PR on day one, and the deploy gate has
+# already been wedged once this month. So it runs, prints the full list, and
+# does not fail the build.
+#
+# Flip `continue-on-error` to false the moment ./tools/check_style.sh exits 0
+# locally. That is the only step needed — the job is otherwise already correct.
+
+on:
+  pull_request:
+    paths:
+      - 'static/css/**'
+      - 'static/src/**'
+      - 'templates/**'
+      - 'tools/check_style.sh'
+
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bench UI style gate
+        continue-on-error: true
+        run: |
+          chmod +x tools/check_style.sh
+          ./tools/check_style.sh

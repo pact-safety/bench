@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Recent events — Li's Bench{% endblock %}
+{% block body %}
+
+<article class="page page--feedback">
+  <header class="page__head">
+    <h1 class="page__title">Recent events</h1>
+    <p class="page__meta">
+      In-memory diagnostic log ring (newest first). This page is admin-only and resets on deploy.
+    </p>
+    <p class="muted">
+      <strong>Captured lines:</strong> {{ event_count }} ·
+      <strong>Updated:</strong> {{ updated_at }}
+    </p>
+    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center;">
+      <button type="button" class="muted-button" id="copy-events">Copy all</button>
+      <button type="button" class="muted-button" id="refresh-events">Refresh</button>
+      <label class="muted" style="display: inline-flex; align-items: center; gap: var(--space-1); margin-left: var(--space-2);">
+        <input type="checkbox" id="auto-refresh-events">
+        Auto refresh (15s)
+      </label>
+    </div>
+  </header>
+
+  <section class="page__section">
+    <pre id="recent-events-log"
+         style="margin: 0; padding: var(--space-3); border: 1px solid var(--border-color); border-radius: 8px; max-height: 70vh; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: 0.825rem; line-height: 1.45;">{{ events_text }}</pre>
+  </section>
+</article>
+
+<script>
+  (function () {
+    var copyBtn = document.getElementById("copy-events");
+    var refreshBtn = document.getElementById("refresh-events");
+    var autoRefresh = document.getElementById("auto-refresh-events");
+    var logEl = document.getElementById("recent-events-log");
+    var intervalId = null;
+
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    copyBtn.addEventListener("click", async function () {
+      var text = logEl ? (logEl.textContent || "") : "";
+      var original = copyBtn.textContent;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          fallbackCopy(text);
+        }
+        copyBtn.textContent = "Copied";
+      } catch (_) {
+        copyBtn.textContent = "Copy failed";
+      }
+      setTimeout(function () { copyBtn.textContent = original; }, 1200);
+    });
+
+    refreshBtn.addEventListener("click", function () {
+      window.location.reload();
+    });
+
+    autoRefresh.addEventListener("change", function () {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (autoRefresh.checked) {
+        intervalId = window.setInterval(function () {
+          window.location.reload();
+        }, 15000);
+      }
+    });
+  })();
+</script>
+
+{% endblock %}
