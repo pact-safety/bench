@@ -899,7 +899,7 @@ class BenchStaticFiles(StaticFiles):
             response.headers["content-type"] = "application/manifest+json"
         return response
 
-app = FastAPI(title="Li's Bench", lifespan=_bench_lifespan)
+app = FastAPI(title="bench", lifespan=_bench_lifespan)
 diag_log_service.install()
 
 # Rate-limit setup (LIS-280). The slowapi Limiter instance is keyed by
@@ -1041,7 +1041,7 @@ if _sentry_enabled and _diag_enabled:
     @app.get("/__sentry/ping")
     def _sentry_ping():
         event_id = _sentry_sdk.capture_message(
-            "Li's Bench Sentry ping — explicit capture_message test",
+            "bench Sentry ping — explicit capture_message test",
             level="info",
         )
         _sentry_sdk.flush(timeout=5.0)
@@ -4377,7 +4377,7 @@ def mira_agenda_push_linear(request: Request, agenda_id: str):
         part for part in (
             item.get("why") or "",
             item.get("notes_md") or "",
-            f"—\nPushed from [Li's Bench agenda](https://bench.libearden.dev/mira/agenda) · kind: {item.get('kind')}",
+            f"—\nPushed from [bench agenda](https://bench.libearden.dev/mira/agenda) · kind: {item.get('kind')}",
         ) if part
     )
     try:

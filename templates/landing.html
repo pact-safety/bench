@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Bench — deliberate practice for AI safety research engineering{% endblock %}
+{% block title %}bench — practice for AI safety research engineering{% endblock %}
 {% block main_class %}container--landing{% endblock %}
 {% block body %}
 
@@ -7,48 +7,53 @@
    two: individuals building toward research-engineer roles, and the
    programs training cohorts of them. Every number on this page is read
    from what actually ships in content/ — if you add or remove material,
-   update `landing_stats` in app/main.py rather than editing prose. #}
+   update `landing_stats` in app/main.py rather than editing prose.
+   Claims here are checked against the app; Mira is not mentioned because
+   it is stubbed as coming soon. #}
 
 <section class="lp-hero">
-  <p class="lp-eyebrow">alpha · invite-only</p>
+  <p class="lp-eyebrow">alpha · invite-only · open source</p>
   <h1 class="lp-hero__title">
-    Practice that behaves like the&nbsp;work
+    One place to learn technical AI&nbsp;safety
   </h1>
   <p class="lp-hero__lede">
-    Bench is a daily drill environment for people moving into AI safety
-    research engineering. Not flashcards, and not FAANG interview prep —
-    problems with the shape of real research work, a mentor that pushes
-    back, and a schedule that decides what you see next.
+    bench pulls the field into one daily practice: foundational papers,
+    exercises, coding problems, curricula like ARENA and ML4Good, the
+    week's news, and timed mock interviews. It looks at where you are
+    weak and at the role you're aiming for, and picks what you work on
+    next.
   </p>
   <div class="lp-cta">
     <a class="lp-btn lp-btn--primary" href="/request-access">Request access</a>
     <a class="lp-btn lp-btn--ghost" href="/login">Sign in</a>
   </div>
   <p class="lp-hero__note">
-    Bench is early. It is invite-only while the loop gets sharper on real
-    users, and access requests are read by a person.
+    bench is part of PACT, which builds open-source tools so independent
+    researchers can evaluate AI systems for themselves. The code is at
+    <a href="https://github.com/pact-safety/bench">github.com/pact-safety/bench</a>.
   </p>
 </section>
 
 <section class="lp-problem">
-  <h2 class="lp-h2">The gap this closes</h2>
+  <h2 class="lp-h2">Why it exists</h2>
   <p class="lp-prose">
-    Most preparation optimises for recall on demand. Research engineering
-    does not work like that: you are handed an underspecified problem, you
-    have to find the constraints yourself, choose between approaches that
-    are all defensible, and then be honest about whether it worked. The
-    skills that decide the outcome — framing, trade-off reasoning,
-    debugging your own reasoning — are exactly the ones a problem set with
-    an answer key never exercises.
+    The people who can build evals, reproduce papers, and read model
+    internals are mostly trained inside frontier labs. The groups that
+    check those labs need the same skills: safety institutes, independent
+    evaluators, auditors, and academic teams. They hire from a small pool.
   </p>
   <p class="lp-prose">
-    Bench structures every core problem around five phases, and the editor
-    stays locked until the plan has content in it. You cannot skip to
-    typing.
+    bench makes those skills cheaper to learn outside a lab. It's free to
+    self-host and works with your own API key. The practice targets what
+    these roles actually test.
+  </p>
+  <p class="lp-prose">
+    Every core problem runs in five phases, and the editor stays locked
+    until you've written a plan.
   </p>
   <ol class="lp-phases">
-    <li><span class="lp-phases__name">Explore</span> pin down the I/O, constraints, edge cases</li>
-    <li><span class="lp-phases__name">Brainstorm</span> two or three approaches, with trade-offs</li>
+    <li><span class="lp-phases__name">Explore</span> pin down inputs, outputs, constraints, edge cases</li>
+    <li><span class="lp-phases__name">Brainstorm</span> two or three approaches and their trade-offs</li>
     <li><span class="lp-phases__name">Plan</span> a paragraph-deep outline</li>
     <li><span class="lp-phases__name">Implement</span> write the code</li>
     <li><span class="lp-phases__name">Verify</span> properties, boundary cases, hand-traced inputs</li>
@@ -58,33 +63,31 @@
 <section class="lp-split">
   <article class="lp-card">
     <p class="lp-card__eyebrow">For researchers</p>
-    <h2 class="lp-card__title">You are trying to do the work, not pass a quiz</h2>
+    <h2 class="lp-card__title">Aim at a real role, then practice toward it</h2>
     <p class="lp-prose">
-      Bench picks what you do each day from where you are actually weak,
-      across {{ stats.axes }} skill axes — transformer internals, training
-      mechanics, eval design, numerical stability, debugging, and
-      interpretability and safety fundamentals alongside them.
+      A short assessment maps you across {{ stats.axes }} skill axes. Paste
+      a job posting and bench reads what the role needs, then shifts your
+      daily mix toward the gaps.
     </p>
     <ul class="lp-list">
       <li>
-        <strong>A mentor that disagrees with you.</strong> Mira is short,
-        specific and honest, and pushes back on a weak experiment design
-        rather than congratulating you for having one.
+        <strong>The whole field in one queue.</strong> Papers, videos,
+        exercises, and problems are tagged on the same axes and scheduled
+        together, so reading feeds practice.
       </li>
       <li>
-        <strong>Retrieval on a schedule, not a streak.</strong> Say a
-        concept back in your own words; what you miss returns in a day,
-        what holds returns in a week, then a month.
+        <strong>Mock interviews.</strong> Interview mode hides hints and
+        reference solutions and runs the clock, so you practice the
+        conditions you'll face.
       </li>
       <li>
-        <strong>No score, ever.</strong> A miss is scheduling information,
-        not a grade — the app tells you what comes back sooner. There is
-        no percentage, no streak to break, and no line that goes down.
+        <strong>Feedback on your process.</strong> Review looks at each
+        phase, not only whether the tests pass.
       </li>
       <li>
-        <strong>Bring your own material.</strong> Papers, lectures and
-        exercises you are already working through get scored on the same
-        axes and enter the same daily rotation.
+        <strong>Retrieval on a schedule.</strong> Explain a concept back in
+        your own words. What you miss returns in a day; what holds returns
+        in a week, then a month.
       </li>
     </ul>
   </article>
@@ -93,30 +96,29 @@
     <p class="lp-card__eyebrow">For programs</p>
     <h2 class="lp-card__title">Your curriculum, with retention attached</h2>
     <p class="lp-prose">
-      Cohort programmes are good at delivering material and structurally
-      bad at knowing what stuck. Bench runs a curriculum as a track — the
-      sequence you already teach — and puts a retrieval loop underneath it.
+      Cohort programs deliver material well and rarely know what stuck.
+      bench runs your sequence as a track and adds practice and retrieval
+      underneath it.
     </p>
     <ul class="lp-list">
       <li>
-        <strong>Tracks carry your sequence.</strong> {{ stats.tracks }}
-        ship today, including ARENA 3.0 and MATS-oriented paths; a track is
-        a manifest, so yours is a file rather than a rebuild.
+        <strong>Tracks follow your syllabus.</strong> {{ stats.tracks }}
+        ship today, including ARENA and ML4Good Technical Prework. A track
+        is a manifest file, so adding yours doesn't need a rebuild.
       </li>
       <li>
-        <strong>Closes the notebook gap.</strong> Working through a
-        notebook with autocomplete on teaches your editor, not you. Bench
-        asks for the same idea cold, later, away from the cell that
-        produced it.
+        <strong>Practice away from the notebook.</strong> Finishing a
+        notebook with autocomplete on doesn't prove the idea landed. bench
+        asks for it again later, without the cell that produced it.
       </li>
       <li>
-        <strong>Per-learner data stays per-learner.</strong> Row-level
-        security is on every table, scoped to the owner.
+        <strong>Each learner's data is their own.</strong> The hosted
+        instance scopes every learner's records to that learner.
       </li>
       <li>
-        <strong>Early enough to shape.</strong> Cohort-level reporting is
-        not built yet. If you run a programme and want it built the way
-        your programme actually works, now is when that is cheap.
+        <strong>Early enough to shape.</strong> Cohort reporting isn't
+        built yet. If you run a program, now is when it's cheap to build it
+        around how yours works.
       </li>
     </ul>
   </article>
@@ -133,19 +135,21 @@
     <div class="lp-stat"><dt>Skill axes</dt><dd>{{ stats.axes }}</dd></div>
   </dl>
   <p class="lp-prose lp-prose--muted">
-    Written by a practitioner working through this material, not
-    licensed or scraped. It grows every week.
+    Written by a practitioner working through this material, not licensed
+    or scraped. It's MIT-licensed and grows every week.
   </p>
 </section>
 
 <section class="lp-close">
-  <h2 class="lp-h2">Have a look</h2>
+  <h2 class="lp-h2">Try it</h2>
   <p class="lp-prose">
-    Access is invite-only during alpha. Tell us what you are working
-    toward and we will get back to you.
+    The hosted instance is invite-only during alpha. Tell us what you're
+    working toward and a person will read it. Or run your own copy from
+    the source.
   </p>
   <div class="lp-cta">
     <a class="lp-btn lp-btn--primary" href="/request-access">Request access</a>
+    <a class="lp-btn lp-btn--ghost" href="https://github.com/pact-safety/bench">View the source</a>
   </div>
 </section>
 

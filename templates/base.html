@@ -55,7 +55,7 @@
       });
     })();
   </script>
-  <title>{% block title %}Li's Bench{% endblock %}</title>
+  <title>{% block title %}bench{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠</text></svg>">
   {# Fonts — match portfolio (libearden.dev). Inter for body, Geist Mono
      for code + eyebrows + tag labels. Preconnect first so the
@@ -85,7 +85,7 @@
 <body data-autosave-user="{{ request.state.user_session.user_id if request.state.user_session else '' }}">
   <header class="site-header">
     <div class="container">
-      <a class="brand" href="/">Li's Bench</a>
+      <a class="brand" href="/">bench</a>
       {# Subtle "alpha · invite-only" pill on public-facing pages so
          conference visitors and people who land on the URL via a
          talk or write-up know what this is. Signed-in users don't

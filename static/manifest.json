@@ -1,6 +1,6 @@
 {
   "id": "/?source=pwa",
-  "name": "Li's Bench",
+  "name": "bench",
   "short_name": "Bench",
   "description": "Daily-driver interview prep — drill, ingest, produce, assess, connect. Single-tenant; the operator's research-engineer engine room.",
   "start_url": "/",

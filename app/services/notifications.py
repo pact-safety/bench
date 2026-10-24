@@ -117,7 +117,7 @@ def format_access_request_email(*, name: str, email: str,
     without hitting the network."""
     subject = f"Bench access request — {name} <{email}>"
     lines = [
-        f"Someone requested access to Li's Bench (request #{request_id}).",
+        f"Someone requested access to bench (request #{request_id}).",
         "",
         f"  Name:    {name}",
         f"  Email:   {email}",

@@ -13,7 +13,8 @@ def _client():
 def test_manifest_endpoint_returns_manifest_media_type():
     """Baseline manifest fields. Name bumped to 'Li's Bench' on the
     2026-05-28 PWA polish so the install-prompt copy matches the
-    brand shown everywhere else; short_name stays 'Bench' for the
+    brand shown everywhere else, then renamed to 'bench' for the
+    2026-10-24 public release; short_name stays 'Bench' for the
     dock icon label where space is tight."""
     client, _m = _client()
 
@@ -23,7 +24,7 @@ def test_manifest_endpoint_returns_manifest_media_type():
     assert response.headers.get("content-type", "").startswith("application/manifest+json")
 
     manifest = response.json()
-    assert manifest["name"] == "Li's Bench"
+    assert manifest["name"] == "bench"
     assert manifest["short_name"] == "Bench"
     assert manifest["start_url"] == "/"
     assert manifest["scope"] == "/"

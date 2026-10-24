@@ -14,6 +14,28 @@ open-source research infrastructure, diagnostic tools, and practice
 environments so independent researchers can evaluate AI systems for
 themselves.
 
+## What a session looks like
+
+These are recordings of the real app at normal speed, with a test user.
+The analysis and review shown are live model output.
+
+A short assessment maps you across five skill axes:
+
+![Assessment result: a five-axis skill profile](docs/assets/journey/assess-skillgraph.gif)
+
+Paste a job posting and bench reads what the role needs:
+
+![A job posting analysed into skill weights, signal tags, and a role profile](docs/assets/journey/aim.gif)
+
+Today's plan shifts toward the gaps, mixing papers, videos, and exercises:
+
+![The Today page leading with the Layer Normalization paper](docs/assets/journey/today.gif)
+
+Interview mode hides the aids, runs the real tests, and reviews each
+phase of how you worked:
+
+![A per-phase review after an interview-mode problem](docs/assets/journey/interview.gif)
+
 ## What's in it
 
 - **47 problems.** 38 build-from-scratch tasks (attention, layer norm,

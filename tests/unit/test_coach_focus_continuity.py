@@ -153,7 +153,7 @@ def test_track_title_is_plain_text_and_directory_links_to_section_work(monkeypat
     title = re.search(r'<title>(.*?)</title>', response.text, re.S)
     assert title
     assert '<script' not in title.group(1)
-    assert title.group(1).strip() == "Graph Track — Tracks — Li's Bench"
+    assert title.group(1).strip() == "Graph Track — Tracks — bench"
     assert 'id="section-2"' in response.text
     assert 'href="/tracks/graph/sections/2"' in response.text
     assert 'details data-track-section' not in response.text
