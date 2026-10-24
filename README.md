@@ -10,9 +10,9 @@ It is not general software-interview prep. The problems assume you can
 already code and focus on the ML engineering that safety teams need.
 
 Bench is part of [PACT](https://github.com/pact-safety), which builds
-open-source tools and practice environments so the capacity to evaluate
-and verify AI systems isn't held only by the organizations building
-them.
+open-source research infrastructure, diagnostic tools, and practice
+environments so independent researchers can evaluate AI systems for
+themselves.
 
 ## What's in it
 
