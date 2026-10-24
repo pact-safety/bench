@@ -25,6 +25,6 @@
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/lang-rust": "^6.0.2",
     "codemirror": "^6.0.2",
-    "markdown-it": "^14.3.0"
+    "markdown-it": "^14.3.3"
   }
 }
